@@ -2890,11 +2890,54 @@ body.is-playing .dock .drop-box{display:none}
     renderDock();
     bindEvents();
 
+    // 调试：暴露到 window 方便诊断
+    window.__rhythmDebug = { steps: [] };
+    const dbg = window.__rhythmDebug;
+    dbg.log = (step, info) => {
+      dbg.steps.push({ step, info, t: Date.now() });
+      console.log('[rhythm]', step, info);
+      const el = document.getElementById('__rhythmDbg');
+      if (el) el.textContent = dbg.steps.map(s => s.step + ':' + (typeof s.info === 'string' ? s.info.slice(0,40) : JSON.stringify(s.info).slice(0,40))).join(' → ');
+    };
+
+    dbg.log('init-start');
     await loadSavedAssets();
+    dbg.log('after-loadSavedAssets');
+
     await gh.bootstrap();
+    dbg.log('after-bootstrap', { dbCount: 'see below' });
+
+    // 检查 IndexedDB 里到底有多少条（autoPull 应该已经下载了）
+    try {
+      const count = await new Promise((res, rej) => {
+        const r = indexedDB.open('rhythm-studio-assets');
+        r.onsuccess = () => {
+          const t = r.result.transaction('files','readonly');
+          const c = t.objectStore('files').count();
+          c.onsuccess = () => res(c.result);
+          c.onerror = () => rej(c.error);
+        };
+        r.onerror = () => rej(r.error);
+      });
+      dbg.log('db-count', count);
+    } catch(e) { dbg.log('db-err', e.message); }
+
+    // 检查 assets 上有多少自定义
+    let customCount = 0;
+    for (const id of ['shaker','tube','bell','drum','handbell','doublereed','triangle','tambourine']) {
+      if (assets[id].icon && assets[id].icon.blob) customCount++;
+    }
+    dbg.log('custom-icons', customCount);
+
     renderAll();
     if (!storageOK) toast('当前环境无法本地保存，自定义只在本次打开有效');
   }
+
+  // 页面底部挂一个隐藏的 debug 徽章（用户看不见，但 puppeteer 能抓）
+  const _dbgDiv = document.createElement('div');
+  _dbgDiv.id = '__rhythmDbg';
+  _dbgDiv.style.cssText = 'position:fixed;top:4px;left:4px;z-index:99999;font:10px/1.2monospace;background:rgba(0,0,0,.7);color:#fff;padding:2px 6px;border-radius:3px;max-width:45vw;display:none';
+  document.addEventListener('DOMContentLoaded', () => document.body && document.body.appendChild(_dbgDiv));
 
   init();
 })();
