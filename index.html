@@ -2924,9 +2924,19 @@ body.is-playing .dock .drop-box{display:none}
     const dbg = window.__rhythmDebug;
     dbg.log = (step, info) => {
       dbg.steps.push({ step, info, t: Date.now() });
-      console.log('[rhythm]', step, info);
+      try { console.log('[rhythm]', step, info); } catch {}
       const el = document.getElementById('__rhythmDbg');
-      if (el) el.textContent = dbg.steps.map(s => s.step + ':' + (typeof s.info === 'string' ? s.info.slice(0,40) : JSON.stringify(s.info).slice(0,40))).join(' → ');
+      if (el) {
+        try {
+          el.textContent = dbg.steps.map(s => {
+            let str;
+            if (typeof s.info === 'string') str = s.info;
+            else if (s.info === undefined) str = '';
+            else str = JSON.stringify(s.info) || '';
+            return s.step + ':' + str.slice(0, 40);
+          }).join(' → ');
+        } catch {}
+      }
     };
 
     dbg.log('init-start');
