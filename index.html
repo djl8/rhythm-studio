@@ -2311,6 +2311,7 @@ body.is-playing .dock .drop-box{display:none}
   const gh = (() => {
     let config = null;   // { user, repo, branch, path, token, autoPull }
     let state = { head: '', frozen: false, syncedAt: 0 };
+    let lastPull = null;   // 最近一次拉取的结果，用于重试与错误提示
 
     function loadConfig() {
       try { config = JSON.parse(localStorage.getItem(GH_CONFIG_KEY)) || null; }
@@ -2415,6 +2416,29 @@ body.is-playing .dock .drop-box{display:none}
       opts = opts || {};
       const timeout = opts.timeout != null ? opts.timeout : 15000;
       return rawRace(path, timeout);
+    }
+
+    /* index.json 单独处理：先走最快的通道，解析失败（缓存里是旧的 404 页面/被截断）时
+       再逐个通道绕过缓存重取，避免一条坏缓存就让整次同步失败 */
+    async function fetchIndexJson(path) {
+      let firstErr = null;
+      let text = null;
+      try {
+        const r = await raw(path, { timeout: 15000 });
+        text = await r.text();
+      } catch (e) { firstErr = e; }
+      const parse = t => { try { return JSON.parse(t); } catch (e) { return null; } };
+      let parsed = text ? parse(text) : null;
+      if (parsed) return parsed;
+      for (const s of rawSources(path)) {
+        try {
+          const r = await fetch(s.url, { cache: 'no-store' });
+          if (!r.ok) continue;
+          const p = parse(await r.text());
+          if (p) return p;
+        } catch (e) {}
+      }
+      throw firstErr || new Error('index.json 内容无法解析');
     }
 
     function b64encode(buf) {
@@ -2653,13 +2677,14 @@ body.is-playing .dock .drop-box{display:none}
       if (!silent) updateStatus('syncing', '正在从云端拉取 ' + repoLabel + '...');
       setSyncChip('syncing', '云端同步中…');
       let index;
+      const indexPath = repo.user + '/' + repo.repo + '/' + repo.branch + '/' + repo.path + '/index.json';
       try {
         _log('fetching-index-json');
-        const r = await raw(repo.user + '/' + repo.repo + '/' + repo.branch + '/' + repo.path + '/index.json');
-        index = await r.json();
+        index = await fetchIndexJson(indexPath);
         _log('index-json-done', { entries: index.index && index.index.length });
       } catch (e) {
         _log('index-json-failed', e.message || String(e));
+        lastPull = { loaded: 0, total: 0, failed: 0, error: e };
         if (!silent) {
           updateStatus('error', '云端没有 index.json（' + (e.message || e) + '）');
           throw e;
@@ -2742,6 +2767,12 @@ body.is-playing .dock .drop-box{display:none}
       }
 
       finishSyncChip(loaded, index.index.length, failedEntries.length);
+      lastPull = {
+        loaded,
+        total: index.index.length,
+        failed: failedEntries.length,
+        error: failedEntries.length ? new Error('还有 ' + failedEntries.length + ' 个文件没拉到') : null
+      };
       return loaded;
     }
 
@@ -2837,18 +2868,44 @@ body.is-playing .dock .drop-box{display:none}
     }
 
     /* --------- bootstrap --------- */
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    /* 自动拉取带重试：刚解锁屏幕 / 刚连上 Wi-Fi 时第一次常失败，重试几次大多能成功 */
+    async function pullWithRetry(silent) {
+      if (navigator.onLine === false) {
+        setSyncChip('syncing', '设备离线 · 用本机缓存');
+        return false;
+      }
+      const waits = [0, 1500, 4000];
+      for (let i = 0; i < waits.length; i++) {
+        if (waits[i]) {
+          if (window.__rhythmDebug) window.__rhythmDebug.log('retry-after-ms', String(waits[i]));
+          await sleep(waits[i]);
+          setSyncChip('syncing', '正在重试同步…');
+        }
+        lastPull = null;
+        try { await doPull({ silent: true }); }
+        catch (e) { lastPull = { loaded: 0, total: 0, failed: 0, error: e }; }
+        if (!lastPull) return true;                        // 云端为空等情况，不算失败
+        if (lastPull.failed === 0 && lastPull.loaded > 0) return true;
+      }
+      const why = lastPull && lastPull.error ? (lastPull.error.message || String(lastPull.error)) : '网络连接不上云端';
+      if (window.__rhythmDebug) window.__rhythmDebug.log('sync-give-up', why);
+      setSyncChip('warn', '云端同步失败 · 点此重试');
+      if (els.syncChip) els.syncChip.title = why;
+      return false;
+    }
+
     async function bootstrap() {
       if (window.__rhythmDebug) window.__rhythmDebug.log("bootstrap-entered");
       loadConfig();
       renderConfig();
       // 1. 先从默认仓库静默自动拉取（零配置零 token，任何设备打开都能直接看到云端自定义）
-      try { await doPull({ silent: true }); }
-      catch { /* 拉不到不影响使用 */ }
+      await pullWithRetry(true);
       // 2. 如果用户配置了自己的仓库（且和默认仓库不同），也自动拉一次
       if (config && config.user && config.repo &&
           (config.user !== DEFAULT_REPO.user || config.repo !== DEFAULT_REPO.repo)) {
-        try { await doPull({ silent: true }); }
-        catch {}
+        await pullWithRetry(true);
       }
     }
 
@@ -2896,14 +2953,15 @@ body.is-playing .dock .drop-box{display:none}
 
       if (els.syncChip) els.syncChip.addEventListener('click', async () => {
         if (!els.syncChip.classList.contains('warn')) return;
+        if (lastPull && lastPull.error) {
+          toast('同步失败原因：' + (lastPull.error.message || lastPull.error), 6000);
+        }
         els.syncChip.disabled = true;
         try {
-          await doPull({ silent: false });
+          await pullWithRetry(true);
           await loadSavedAssets();
           renderAll();
-        } catch (e) {
-          setSyncChip('warn', '云端同步失败 · 点此重试');
-        }
+        } catch (e) {}
         els.syncChip.disabled = false;
       });
 
@@ -2944,7 +3002,7 @@ body.is-playing .dock .drop-box{display:none}
       });
     }
 
-    return { bootstrap, bind, isFrozen: () => state.frozen, renderConfig, saveConfig };
+    return { bootstrap, bind, isFrozen: () => state.frozen, renderConfig, saveConfig, retryNow: pullWithRetry };
   })();
 
   /* ================= 初始化 ================= */
@@ -3051,6 +3109,15 @@ body.is-playing .dock .drop-box{display:none}
       }).catch(e => { dbg.log('bootstrap-error', e && e.message); });
     }, 300);
     dbg.log('bootstrap-fire-and-forget');
+
+    // 网络恢复时自动补一次同步（平板上经常是打开页面时还没连上网）
+    window.addEventListener('online', () => {
+      dbg.log('network-online-retry');
+      gh.retryNow(true).then(() => loadSavedAssets()).then(() => {
+        renderAll();
+        dbg.log('ui-refreshed-after-online');
+      }).catch(() => {});
+    });
 
     renderAll();
     if (!storageOK) toast('当前环境无法本地保存，自定义只在本次打开有效');
