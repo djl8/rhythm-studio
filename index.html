@@ -2383,37 +2383,23 @@ body.is-playing .dock .drop-box{display:none}
       return list;
     }
 
-    let preferredTag = null;   // 实测最快的那条通道
-
-    function fetchWithTimeout(url, timeout) {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeout);
-      return fetch(url, { cache: 'default', signal: controller.signal }).then(r => {
-        clearTimeout(timer);
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r;
-      }, e => { clearTimeout(timer); throw e; });
-    }
-
-    /* 第一次拉取时让几条通道同时跑，谁先回来就用谁（其余立刻中断） */
+    /* 每个文件都让几条通道同时跑，谁先回来就用谁（其余立刻中断）
+       这样哪条通道在当前网络下最快、哪条被墙，页面自己会绕开，不需要用户配置 */
     function rawRace(path, timeout) {
       const sources = rawSources(path);
       return new Promise((resolve, reject) => {
         const ctrls = [];
         let pending = sources.length;
         let settled = false;
-        const timers = [];
         sources.forEach((s, i) => {
           const c = new AbortController();
           ctrls.push(c);
           const timer = setTimeout(() => { try { c.abort(); } catch (e) {} }, timeout);
-          timers.push(timer);
           fetch(s.url, { cache: 'default', signal: c.signal }).then(r => {
             clearTimeout(timer);
             if (!r.ok) throw new Error('HTTP ' + r.status);
             if (settled) return;
             settled = true;
-            preferredTag = s.tag;
             ctrls.forEach((cc, j) => { if (j !== i) { try { cc.abort(); } catch (e) {} } });
             resolve(r);
           }).catch(e => {
@@ -2425,21 +2411,10 @@ body.is-playing .dock .drop-box{display:none}
       });
     }
 
-    async function raw(path, opts) {
+    function raw(path, opts) {
       opts = opts || {};
-      const timeout = opts.timeout != null ? opts.timeout : 10000;
-      const sources = rawSources(path);
-      if (!preferredTag) return rawRace(path, Math.max(timeout, 15000));
-      const first = sources.filter(s => s.tag === preferredTag);
-      const ordered = first.concat(sources.filter(s => s.tag !== preferredTag));
-      let lastErr = null;
-      for (let i = 0; i < ordered.length; i++) {
-        try {
-          return await fetchWithTimeout(ordered[i].url, timeout);
-        } catch (e) { lastErr = e; }
-      }
-      preferredTag = null;   // 全挂 → 下次重新探测
-      throw new Error('云端文件加载失败：' + path + '（' + (lastErr && (lastErr.message || lastErr)) + '）');
+      const timeout = opts.timeout != null ? opts.timeout : 15000;
+      return rawRace(path, timeout);
     }
 
     function b64encode(buf) {
