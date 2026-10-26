@@ -1,0 +1,2884 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>节奏 · 音色工坊</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232f5d46'/%3E%3Cpath d='M38 15v25.5a8.5 8.5 0 1 1-4-7.2V22l14-3.5V30a8.5 8.5 0 1 1-4-7.2V15z' fill='%23f8f1df'/%3E%3C/svg%3E">
+<style>
+:root{
+  --paper:#f2ecdf;
+  --card:#fffdf7;
+  --ink:#1f2b24;
+  --muted:#7b8478;
+  --muted-2:#98a094;
+  --line:rgba(31,43,36,.10);
+  --line-strong:rgba(31,43,36,.18);
+  --brand:#2f5d46;
+  --brand-dark:#234636;
+  --group-accent:#89a95c;
+  --group-soft:#eef4e4;
+  --shadow-card:0 24px 50px -30px rgba(31,43,36,.35);
+  --shadow-modal:0 40px 90px -30px rgba(15,24,19,.55);
+  --font:"Noto Sans SC","Noto Sans CJK SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;min-height:100vh;font-family:var(--font);color:var(--ink);
+  background:
+    radial-gradient(1100px 620px at 4% -12%, #e5eed8 0%, rgba(229,238,216,0) 62%),
+    radial-gradient(980px 520px at 102% -6%, #f7e7c6 0%, rgba(247,231,198,0) 58%),
+    var(--paper);
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:radial-gradient(rgba(31,43,36,.05) 1px, transparent 1px);
+  background-size:24px 24px;
+  -webkit-mask-image:linear-gradient(to bottom,#000 0%,rgba(0,0,0,.35) 55%,transparent 85%);
+  mask-image:linear-gradient(to bottom,#000 0%,rgba(0,0,0,.35) 55%,transparent 85%);
+}
+body.modal-open{overflow:hidden}
+button{font-family:inherit}
+svg{display:block}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- 顶部 ---------- */
+.topbar{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:26px 34px 20px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{display:flex;align-items:center;gap:14px;min-width:0}
+.logo{width:48px;height:48px;flex:0 0 auto;border-radius:15px;background:linear-gradient(150deg,#3e7358,#214635);display:grid;place-items:center;box-shadow:0 10px 22px -12px rgba(31,93,70,.7), inset 0 1px 0 rgba(255,255,255,.2)}
+.logo svg{width:27px;height:27px}
+.brand h1{margin:0;font-size:23px;letter-spacing:.02em;font-weight:700}
+.brand .sub{margin-top:4px;font-size:12.5px;color:var(--muted);letter-spacing:.01em}
+.top-note{display:flex;align-items:center;gap:8px;padding:9px 14px;border:1px solid var(--line);border-radius:999px;background:rgba(255,253,247,.66);backdrop-filter:blur(10px);font-size:12px;color:#667061;white-space:nowrap}
+.top-note i{width:7px;height:7px;border-radius:50%;background:#7fae63;box-shadow:0 0 0 4px rgba(127,174,99,.16)}
+.top-actions{display:flex;align-items:center;gap:9px}
+.screen-btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border:1px solid var(--line);border-radius:999px;background:rgba(255,253,247,.78);backdrop-filter:blur(10px);color:#4d5a4c;font-size:11.5px;font-weight:600;cursor:pointer;transition:.16s;white-space:nowrap}
+.screen-btn:hover{background:#fffdf7;border-color:var(--line-strong);transform:translateY(-1px)}
+.screen-btn svg{width:14px;height:14px}
+.landscape-tip{display:none}
+@media (orientation:portrait) and (max-width:900px){
+  .landscape-tip{display:flex;align-items:center;justify-content:center;gap:7px;width:fit-content;margin:0 auto 10px;padding:7px 14px;border-radius:999px;background:#fff8e8;border:1px solid #ebdab0;color:#7b652b;font-size:11px;line-height:1.35}
+  .landscape-tip svg{width:13px;height:13px;flex:0 0 auto}
+  .landscape-tip b{font-weight:700}
+}
+
+/* ---------- 布局 ---------- */
+.layout{position:relative;z-index:1;max-width:1580px;margin:0 auto;padding:0 34px 46px;display:grid;grid-template-columns:minmax(0,1fr) min(616px,38vw);gap:22px;align-items:start}
+
+/* ---------- 舞台 ---------- */
+.stage-card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:14px;box-shadow:var(--shadow-card)}
+.stage{position:relative;border-radius:16px;overflow:hidden;background:#fbfbf9;box-shadow:inset 0 0 0 1px rgba(31,43,36,.06);padding-top:58px}
+.stage svg.score{display:block;width:100%;height:auto;user-select:none}
+.stage .band{cursor:pointer}
+.stage .band.playing{cursor:default}
+.band-shade,.band-outline,.band-pulse{pointer-events:none;transition:opacity .35s ease}
+.band-outline{fill:none;stroke-width:2.6;stroke-dasharray:10 8}
+.band-shade{fill:#fff}
+.band-pulse{fill:#fff;opacity:0}
+.band.playing .band-pulse{animation:bandPulse .56s ease-in-out infinite}
+@keyframes bandPulse{0%,100%{opacity:.02}50%{opacity:.15}}
+.band.playing .band-outline{opacity:0 !important}
+
+/* 左上角两个小框 */
+.dock{position:absolute;top:10px;left:10px;display:flex;align-items:stretch;gap:8px;z-index:5;transition:opacity .3s ease,transform .3s ease}
+body.is-playing .dock .group-box,
+body.is-playing .dock .drop-box{display:none}
+.dock-box{
+  background:rgba(255,253,247,.88);backdrop-filter:blur(16px) saturate(1.2);
+  border:1px solid rgba(31,43,36,.13);border-radius:14px;
+  box-shadow:0 12px 26px -18px rgba(31,43,36,.5), inset 0 1px 0 rgba(255,255,255,.75);
+}
+.group-box{display:flex;align-items:center;gap:7px;padding:8px 10px}
+.swatch{position:relative;width:26px;height:26px;padding:0;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,.92);background:var(--c);box-shadow:0 0 0 1px rgba(31,43,36,.14), inset 0 -3px 6px rgba(0,0,0,.13);transition:transform .16s ease,box-shadow .16s ease}
+.swatch:hover{transform:scale(1.09)}
+.swatch[aria-pressed="true"]{transform:scale(1.13);box-shadow:0 0 0 1px #fff,0 0 0 3.5px rgba(31,43,36,.28),inset 0 -3px 6px rgba(0,0,0,.13)}
+.swatch[aria-pressed="true"]::after{content:"✓";position:absolute;inset:0;display:grid;place-items:center;font-size:12px;font-weight:800;color:var(--check,#fff);text-shadow:0 1px 2px rgba(0,0,0,.18)}
+.drop-box{display:flex;align-items:center;gap:5px;min-width:200px;min-height:44px;padding:5px 9px;border-style:dashed;border-color:rgba(31,43,36,.22);transition:border-color .18s,background .18s,transform .18s}
+.drop-box.empty{background:rgba(255,253,247,.72)}
+.drop-box.over{border-color:var(--group-accent);background:var(--group-soft);transform:scale(1.02)}
+.drop-hint{display:flex;align-items:center;gap:7px;padding:2px 4px;font-size:12px;color:var(--muted);pointer-events:none}
+.drop-hint svg{width:16px;height:16px;color:var(--muted-2)}
+.chips{display:flex;align-items:center;gap:4px;min-width:0}
+.chip{display:flex;align-items:center;gap:1px;padding:2px 3px 2px 3px;border-radius:10px;background:#fff;border:1px solid var(--line);border-left:3px solid var(--group-accent);animation:chipIn .25s ease}
+@keyframes chipIn{from{transform:scale(.7);opacity:0}to{transform:none;opacity:1}}
+.chip-icon{width:28px;height:28px;display:grid;place-items:center}
+.chip-icon svg,.chip-icon img{width:25px;height:25px;object-fit:contain}
+.chip-x{width:18px;height:18px;padding:0;border:0;border-radius:50%;background:rgba(31,43,36,.07);color:#6f786d;font-size:12px;line-height:1;display:grid;place-items:center;cursor:pointer;transition:.15s}
+.chip-x:hover{background:#7d3a32;color:#fff}
+.play-fab{display:flex;align-items:center;gap:7px;height:44px;padding:0 15px;border:0;border-radius:14px;background:var(--ink);color:#fffaf0;font-size:13px;font-weight:600;letter-spacing:.03em;cursor:pointer;box-shadow:0 12px 24px -14px rgba(31,43,36,.8);transition:.18s}
+.play-fab:hover:not(:disabled){background:#111a15;transform:translateY(-1px)}
+.play-fab:disabled{opacity:.42;cursor:not-allowed;box-shadow:none}
+.play-fab.is-stop{background:#8c4038}
+.play-fab svg{width:13px;height:13px}
+.play-fab .ic-stop{display:none}
+.play-fab.is-stop .ic-play{display:none}
+.play-fab.is-stop .ic-stop{display:block}
+
+.stage-foot{display:flex;align-items:center;gap:9px;padding:12px 6px 1px;font-size:12.5px;color:var(--muted)}
+.cap-dot{width:10px;height:10px;border-radius:50%;background:var(--group-accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--group-accent) 18%,transparent);transition:background .3s}
+.cap-label{color:var(--ink);font-weight:600}
+.cap-names{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cap-hint{margin-left:auto;font-size:11.5px;color:var(--muted-2);white-space:nowrap}
+
+/* ---------- 右侧乐器栏 ---------- */
+.sidebar{position:sticky;top:18px;display:flex;flex-direction:column;gap:14px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:18px 16px 14px;box-shadow:var(--shadow-card)}
+.panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:0 2px}
+.panel-head h2{margin:0;font-size:16px;letter-spacing:.02em}
+.panel-head p{margin:5px 0 0;font-size:11.5px;line-height:1.6;color:var(--muted)}
+.count-badge{flex:0 0 auto;min-width:26px;height:26px;padding:0 8px;border-radius:9px;background:var(--group-soft);border:1px solid var(--line);color:#5f6c5d;font-size:11px;font-weight:700;display:grid;place-items:center;transition:background .3s}
+.ins-list{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:14px}
+.ins-card{position:relative;display:flex;align-items:center;gap:8px;padding:9px 8px 9px 9px;border:1px solid var(--line);border-radius:14px;background:#fffefa;cursor:grab;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.ins-card:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--accent) 38%,var(--line));box-shadow:0 16px 26px -20px color-mix(in srgb,var(--accent) 55%,transparent)}
+.ins-card:active{cursor:grabbing}
+.ins-card.dragging{opacity:.45;transform:scale(.97)}
+.ins-icon{flex:0 0 auto;width:44px;height:44px;border-radius:13px;background:var(--tint);display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(31,43,36,.04)}
+.ins-icon svg,.ins-icon img{width:35px;height:35px;object-fit:contain}
+.ins-body{flex:1;min-width:0}
+.ins-title{display:flex;align-items:baseline;gap:6px;min-width:0}
+.ins-title h3{margin:0;font-size:13px;font-weight:700;letter-spacing:.01em}
+.ins-en{font-size:8px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted-2);white-space:nowrap}
+.ins-badge{margin-left:auto;flex:0 0 auto;font-size:9px;font-weight:700;color:#3f6b4f;background:#e7f0e4;border-radius:999px;padding:2px 6px}
+.ins-body p{margin:2px 0 4px;font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.assigned-dots{display:flex;gap:4px}
+.assigned-dots i{width:6px;height:6px;border-radius:50%;background:var(--dot);opacity:.18;transition:.2s}
+.assigned-dots i.on{opacity:1;box-shadow:0 0 0 2px color-mix(in srgb,var(--dot) 18%,transparent)}
+.ins-add{flex:0 0 auto;width:28px;height:28px;padding:0;border-radius:50%;border:1px solid color-mix(in srgb,var(--accent) 34%,var(--line));background:#fff;color:var(--accent);font-size:17px;font-weight:500;line-height:1;display:grid;place-items:center;cursor:pointer;transition:.16s}
+.ins-add:hover{background:var(--tint);transform:scale(1.06)}
+.drag-tip{margin:13px 2px 2px;font-size:10.5px;line-height:1.6;color:var(--muted-2);display:flex;align-items:center;gap:6px}
+.drag-tip svg{width:13px;height:13px;flex:0 0 auto}
+.panel-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;padding:10px 2px 0;border-top:1px dashed var(--line)}
+.link-btn{padding:0;border:0;background:none;color:var(--muted);font-size:11px;cursor:pointer;text-decoration:none}
+.link-btn:hover{color:#8c4038}
+.link-btn.armed{color:#8c4038;font-weight:700}
+.storage-note{font-size:9.5px;color:var(--muted-2)}
+
+/* ---------- GitHub 同步面板 ---------- */
+.gh-config{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px 14px 13px;box-shadow:var(--shadow-card)}
+.gh-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 2px}
+.gh-head h3{margin:0;font-size:14px;font-weight:700;letter-spacing:.01em;display:flex;align-items:center;gap:7px}
+.gh-head h3 svg{width:16px;height:16px;color:var(--ink)}
+.gh-status{font-size:10px;font-weight:600;padding:2px 7px;border-radius:999px;background:#eef4e4;color:#5f7048;white-space:nowrap}
+.gh-status.configured{background:#e7f0e4;color:#3f6b4f}
+.gh-status.syncing{background:#fff4d6;color:#8a6d1a}
+.gh-status.frozen{background:#f8d9d6;color:#8a3430}
+.gh-status.error{background:#f6e2e1;color:#a03a36}
+.gh-desc{margin:6px 2px 0;font-size:10.5px;line-height:1.6;color:var(--muted-2)}
+.gh-fields{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.gh-row{display:flex;flex-direction:column;gap:3px}
+.gh-row label{font-size:10.5px;font-weight:600;color:var(--muted);letter-spacing:.02em}
+.gh-row input{height:30px;padding:0 9px;border:1px solid var(--line);border-radius:9px;background:#fff;font-size:12px;font-family:var(--font);outline:none;transition:border-color .15s}
+.gh-row input:focus{border-color:var(--brand);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 14%,transparent)}
+.gh-row input::placeholder{color:var(--muted-2)}
+.gh-row.tight{flex-direction:row;gap:6px}
+.gh-row.tight input{flex:1}
+.gh-token-wrap{position:relative}
+.gh-token-wrap input{padding-right:36px}
+.gh-token-toggle{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:22px;height:22px;border:0;background:transparent;color:var(--muted-2);cursor:pointer;font-size:13px;display:grid;place-items:center;border-radius:6px}
+.gh-token-toggle:hover{background:rgba(31,43,36,.06);color:var(--ink)}
+.gh-actions{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+.gh-btn{height:34px;padding:0 12px;border-radius:10px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;gap:5px;border:1px solid var(--line);background:#fff;color:var(--ink)}
+.gh-btn:hover{border-color:var(--line-strong);background:#fbfbf8}
+.gh-btn.primary{background:linear-gradient(180deg,#3f6b4f,#2f5d46);color:#fff;border-color:#2f5d46;box-shadow:0 8px 16px -12px rgba(47,93,70,.6)}
+.gh-btn.primary:hover{transform:translateY(-1px)}
+.gh-btn.primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.gh-btn.ghost{background:transparent}
+.gh-btn.danger{color:#8a3430;border-color:#e2b8b5;background:#faf0ef}
+.gh-btn.danger:hover{background:#f6e2e1}
+.gh-btn-row{display:flex;gap:6px}
+.gh-btn-row .gh-btn{flex:1}
+.gh-meta{margin-top:10px;padding:8px 10px;border-radius:10px;background:rgba(31,43,36,.04);font-size:10.5px;line-height:1.65;color:var(--muted-2)}
+.gh-meta code{background:rgba(31,43,36,.08);padding:1px 5px;border-radius:4px;color:var(--ink);font-family:ui-monospace,Monaco,Consolas,monospace;font-size:10.5px}
+.gh-global{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.gh-global label{font-size:10.5px;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:6px;user-select:none}
+.gh-global input[type=checkbox]{accent-color:var(--brand);width:13px;height:13px}
+.gh-frozen-banner{margin-top:8px;padding:8px 10px;border-radius:10px;background:#f8d9d6;color:#8a3430;font-size:11px;font-weight:600;display:flex;align-items:center;gap:6px}
+.gh-frozen-banner svg{width:13px;height:13px;flex:0 0 auto}
+@media (max-width:940px){
+  .gh-config{padding:12px 11px 10px;border-radius:18px}
+}
+@media (max-width:720px){
+  .gh-config{padding:10px 8px 9px;border-radius:14px}
+  .gh-head h3{font-size:12px}
+  .gh-meta{display:none}
+}
+
+/* ---------- 弹窗 ---------- */
+.overlay{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:22px;background:rgba(19,27,22,.56);backdrop-filter:blur(9px);opacity:0;transition:opacity .24s ease}
+.overlay[hidden]{display:none}
+.overlay.open{opacity:1}
+.modal{width:min(980px,100%);max-height:min(92vh,700px);display:grid;grid-template-columns:1.12fr .88fr;background:var(--card);border-radius:26px;overflow:hidden;box-shadow:var(--shadow-modal);transform:translateY(14px) scale(.985);transition:transform .28s cubic-bezier(.2,.8,.2,1);position:relative}
+.overlay.open .modal{transform:none}
+.modal-media{position:relative;display:flex;align-items:center;justify-content:center;padding:26px;background:radial-gradient(120% 100% at 24% 0%,color-mix(in srgb,var(--accent) 26%,#101713) 0%,#101713 68%);min-height:100%}
+.media-glow{position:absolute;width:70%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 32%,transparent) 0%,transparent 66%);filter:blur(20px);opacity:.55;pointer-events:none}
+.video-frame{position:relative;width:100%;aspect-ratio:16/9;border-radius:16px;overflow:hidden;background:#0a0f0c;box-shadow:0 30px 60px -30px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.08);z-index:1}
+.video-frame video{width:100%;height:100%;object-fit:cover;display:block}
+.media-badge{position:absolute;left:12px;bottom:12px;z-index:2;display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:rgba(12,18,14,.62);backdrop-filter:blur(8px);color:#f4f1e7;font-size:10px;letter-spacing:.03em;border:1px solid rgba(255,255,255,.12)}
+.media-badge i{width:6px;height:6px;border-radius:50%;background:#b8d39a;box-shadow:0 0 6px #b8d39a}
+.sound-toggle{position:absolute;right:12px;top:12px;z-index:2;width:34px;height:34px;padding:0;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(12,18,14,.5);backdrop-filter:blur(8px);color:#f4f1e7;display:grid;place-items:center;cursor:pointer;transition:.16s}
+.sound-toggle:hover{background:rgba(12,18,14,.75)}
+.sound-toggle svg{width:16px;height:16px}
+.sound-toggle .ic-on{display:none}
+.sound-toggle[aria-pressed="true"] .ic-off{display:none}
+.sound-toggle[aria-pressed="true"] .ic-on{display:block}
+.media-error{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;background:#101713;color:#dfe5d8;font-size:12px;padding:24px;z-index:2}
+.media-error.show{display:flex}
+.media-error strong{font-size:13px}
+.media-error span{color:#8c998c;font-size:11px}
+
+.modal-info{padding:24px 25px 20px;overflow:auto;max-height:min(92vh,700px);background:linear-gradient(180deg,#fffdf7,#fffaf1)}
+.m-head{display:flex;align-items:center;gap:13px;padding-right:34px}
+.m-icon{flex:0 0 auto;width:50px;height:50px;border-radius:15px;background:var(--tint);display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(31,43,36,.04)}
+.m-icon svg,.m-icon img{width:38px;height:38px;object-fit:contain}
+.m-title-row{min-width:0}
+.m-title-row h2{margin:0;font-size:24px;letter-spacing:.02em;line-height:1.2}
+.m-en{margin-top:4px;font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted-2)}
+.m-close{position:absolute;right:14px;top:12px;z-index:5;width:34px;height:34px;border:1px solid var(--line);border-radius:50%;background:rgba(255,253,247,.9);color:#5c665a;font-size:18px;line-height:1;display:grid;place-items:center;cursor:pointer;transition:.16s}
+.m-close:hover{background:#f0e9db;transform:rotate(90deg)}
+.m-desc{margin:15px 0 0;font-size:13px;line-height:1.8;color:#5b6657}
+.m-actions{display:flex;gap:8px;margin-top:15px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 14px;border-radius:11px;border:1px solid var(--line);background:#fff;color:var(--ink);font-size:12px;font-weight:600;cursor:pointer;transition:.16s}
+.btn:hover{transform:translateY(-1px);border-color:var(--line-strong)}
+.btn svg{width:14px;height:14px}
+.btn-primary{background:var(--ink);border-color:var(--ink);color:#fffaf0}
+.btn-primary:hover{background:#121b16}
+.btn-dot{width:8px;height:8px;border-radius:50%;background:var(--group-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--group-accent) 20%,transparent)}
+.m-assets{margin-top:17px;padding-top:14px;border-top:1px solid var(--line)}
+.m-assets-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px}
+.m-assets-head h3{margin:0;font-size:12px;letter-spacing:.03em;font-weight:700}
+.m-assets-head span{font-size:9.5px;color:var(--muted-2)}
+.asset-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px dashed rgba(31,43,36,.09)}
+.asset-row:last-child{border-bottom:0}
+.asset-subhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:13px 0 1px;padding-top:11px;border-top:1px solid var(--line)}
+.asset-subhead strong{font-size:11px;font-weight:700;letter-spacing:.02em}
+.asset-subhead span{font-size:9px;color:var(--muted-2);text-align:right;line-height:1.35}
+.grp-dot{display:inline-block;width:8px;height:8px;margin-right:5px;border-radius:50%;vertical-align:middle;box-shadow:0 0 0 1px rgba(31,43,36,.16)}
+.asset-row.fx{padding:7px 0}
+.ar-thumb{flex:0 0 auto;width:30px;height:30px;border-radius:9px;background:#f7f2e7;display:grid;place-items:center;overflow:hidden}
+.ar-thumb svg,.ar-thumb img{width:24px;height:24px;object-fit:contain}
+.ar-label{flex:1;min-width:0}
+.ar-label strong{display:block;font-size:11.5px;font-weight:600}
+.ar-label small{display:block;margin-top:2px;font-size:9.5px;color:var(--muted-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ar-status{flex:0 0 auto;font-size:8.5px;font-weight:700;padding:2px 6px;border-radius:999px;background:#f0eee7;color:#8b9186;white-space:nowrap}
+.ar-status.custom{background:#e4efe4;color:#37674c}
+.ar-btn{flex:0 0 auto;height:26px;padding:0 8px;border-radius:7px;border:1px solid var(--line);background:#fff;color:#586256;font-size:10px;font-weight:600;cursor:pointer;transition:.15s}
+.ar-btn:hover{border-color:var(--line-strong);background:#faf7ee}
+.ar-btn:disabled{opacity:.35;cursor:not-allowed}
+.ar-btn.icon{width:26px;padding:0;display:grid;place-items:center;font-size:10px}
+.ar-btn.play svg{width:9px;height:9px}
+.m-reset{margin-top:10px;padding:0;border:0;background:none;font-size:10px;color:var(--muted-2);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.m-reset:hover{color:#8c4038}
+
+/* ---------- 提示 ---------- */
+.toast{position:fixed;left:50%;bottom:26px;z-index:100;transform:translate(-50%,18px);opacity:0;pointer-events:none;background:rgba(27,37,31,.95);color:#fbf7ec;font-size:12.5px;padding:10px 17px;border-radius:999px;box-shadow:0 20px 40px -20px rgba(0,0,0,.6);transition:opacity .25s ease,transform .25s ease;max-width:86vw;text-align:center}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- 动效 ---------- */
+.fx-pop{transform-box:fill-box;transform-origin:center;animation:fxPop .9s cubic-bezier(.2,.75,.25,1) forwards}
+@keyframes fxPop{0%{opacity:0;transform:scale(.3)}18%{opacity:1;transform:scale(1.14)}42%{transform:scale(1)}78%{opacity:1;transform:scale(.98)}100%{opacity:0;transform:scale(.9)}}
+.fx-ring{transform-box:fill-box;transform-origin:center;animation:fxRing .8s cubic-bezier(.15,.7,.3,1) forwards}
+@keyframes fxRing{0%{opacity:.75;transform:scale(.55)}100%{opacity:0;transform:scale(2.4)}}
+.playhead-group{pointer-events:none}
+@media (prefers-reduced-motion:reduce){
+  .fx-pop{animation-duration:.35s}
+  .fx-ring{display:none}
+  .band.playing .band-pulse{animation:none;opacity:.08}
+}
+
+/* ---------- 响应式 ---------- */
+/* 横屏：始终左右并排，右侧乐器栏逐步收窄 */
+@media (max-width:1400px){
+  .layout{grid-template-columns:minmax(0,1fr) 540px;gap:18px}
+}
+@media (max-width:1240px){
+  .layout{grid-template-columns:minmax(0,1fr) 480px;gap:16px;padding:0 24px 36px}
+  .ins-icon{width:40px;height:40px;border-radius:12px}
+  .ins-icon svg,.ins-icon img{width:32px;height:32px}
+  .ins-title h3{font-size:12.5px}
+  .ins-body p{font-size:9.5px}
+  .ins-add{width:26px;height:26px;font-size:16px}
+}
+@media (max-width:1100px){
+  .layout{grid-template-columns:minmax(0,1fr) 336px;gap:16px;padding:0 20px 28px}
+  .sidebar{top:12px}
+  .topbar{padding:18px 20px 14px}
+  .ins-list{grid-template-columns:1fr}
+}
+@media (max-width:940px){
+  .layout{grid-template-columns:minmax(0,1fr) 264px;gap:14px;padding:0 16px 22px}
+  .panel{padding:14px 12px 12px;border-radius:18px}
+  .ins-list{gap:7px;margin-top:10px}
+  .ins-card{gap:8px;padding:8px 7px;border-radius:13px}
+  .ins-icon{width:40px;height:40px;border-radius:12px}
+  .ins-icon svg,.ins-icon img{width:31px;height:31px}
+  .ins-body p{display:none}
+  .ins-en{display:none}
+  .assigned-dots{display:none}
+  .drag-tip{display:none}
+  .panel-foot{flex-direction:column;align-items:flex-start;gap:5px}
+}
+@media (max-width:720px){
+  .layout{grid-template-columns:minmax(0,1fr) 148px;gap:10px;padding:0 10px 16px}
+  .panel{padding:9px 7px 8px;border-radius:14px}
+  .panel-head{padding:0 1px}
+  .panel-head h2{font-size:12px}
+  .panel-head p,.count-badge{display:none}
+  .ins-list{gap:6px;margin-top:8px}
+  .ins-card{flex-direction:column;align-items:center;gap:4px;padding:7px 4px 6px;text-align:center}
+  .ins-icon{width:38px;height:38px;border-radius:11px}
+  .ins-icon svg,.ins-icon img{width:29px;height:29px}
+  .ins-title{justify-content:center}
+  .ins-title h3{font-size:11.5px}
+  .ins-badge{display:none}
+  .ins-add{position:absolute;right:3px;top:3px;width:20px;height:20px;font-size:14px}
+  .panel-foot{padding-top:7px;margin-top:7px}
+  .link-btn{font-size:10px}
+  .storage-note{display:none}
+  .sidebar{top:8px}
+}
+/* 横屏矮屏：压缩纵向空间，尽量一屏放下（放在响应式末尾以覆盖上方规则） */
+@media (max-width:820px){
+  .topbar{padding:18px 16px 14px}
+  .brand h1{font-size:19px}
+  .brand .sub{font-size:11px}
+  .top-note{display:none}
+  .layout{padding:0 12px 20px}
+  .stage-card{padding:8px;border-radius:18px}
+  .stage{border-radius:12px;padding-top:52px}
+  .cap-hint{display:none}
+  .dock{gap:5px;top:6px;left:6px}
+  .group-box{padding:6px 7px;gap:5px}
+  .swatch{width:22px;height:22px}
+  .drop-box{min-width:128px;min-height:40px;padding:4px 6px}
+  .play-fab{height:40px;padding:0 11px}
+  .modal{grid-template-columns:1fr;max-height:90vh;overflow:auto}
+  .modal-media{padding:16px;min-height:auto}
+  .modal-info{max-height:none;padding:20px}
+  .m-close{position:fixed;top:calc(5vh + 10px);right:calc(5vw + 10px)}
+}
+@media (max-width:560px){
+  .brand .sub{display:none}
+  .drop-hint span{display:none}
+  .drop-box{min-width:84px}
+  .chip{padding:1px 2px;gap:0}
+  .chip-icon{width:22px;height:22px}
+  .chip-icon svg,.chip-icon img{width:20px;height:20px}
+  .chip-x{width:14px;height:14px;font-size:9px}
+  .play-fab{padding:0 10px}
+  .play-fab span{display:none}
+  .play-fab{width:40px;justify-content:center}
+  .m-desc{font-size:12px}
+}
+@media (max-width:520px){
+  .layout{grid-template-columns:minmax(0,1fr) 132px;gap:8px;padding:0 8px 14px}
+  .screen-btn{padding:0 10px}
+  .dock{gap:4px;top:4px;left:4px}
+  .group-box{padding:4px 5px;gap:3px}
+  .swatch{width:18px;height:18px}
+  .swatch[aria-pressed="true"]::after{font-size:9px}
+  .drop-box{min-width:64px;min-height:38px;padding:3px 5px}
+  .play-fab{width:36px;height:38px;padding:0;justify-content:center}
+  .panel{padding:8px 6px 7px}
+  .ins-card{padding:7px 3px 6px}
+}
+@media (orientation:landscape) and (max-height:600px){
+  .topbar{padding:8px 16px 7px;gap:12px}
+  .brand .sub{display:none}
+  .logo{width:34px;height:34px;border-radius:10px}
+  .logo svg{width:20px;height:20px}
+  .brand h1{font-size:17px}
+  .layout{padding:0 14px 10px;gap:12px;grid-template-columns:minmax(0,1fr) clamp(236px,42vw,500px)}
+  .stage-card{padding:8px;border-radius:16px}
+  .stage{padding-top:48px;border-radius:12px}
+  .dock{top:5px;left:5px;gap:5px}
+  .group-box{padding:5px 6px;gap:4px}
+  .swatch{width:20px;height:20px}
+  .drop-box{min-width:126px;min-height:38px;padding:4px 6px}
+  .play-fab{height:38px}
+  .stage-foot{display:none}
+  .sidebar{top:8px}
+  .panel{padding:9px 8px 8px}
+  .panel-head p{display:none}
+  .ins-list{grid-template-columns:1fr;gap:6px}
+  .ins-card{flex-direction:row;align-items:center;gap:8px;padding:6px 7px;text-align:left;border-radius:12px}
+  .ins-title{justify-content:flex-start}
+  .ins-title h3{font-size:12px;white-space:nowrap}
+  .ins-en,.ins-badge,.assigned-dots{display:none}
+  .ins-add{position:static;flex:0 0 auto;width:24px;height:24px;font-size:15px}
+  .ins-icon{width:34px;height:34px;border-radius:10px}
+  .ins-icon svg,.ins-icon img{width:26px;height:26px}
+  .ins-body p,.drag-tip,.panel-foot{display:none}
+  .modal{grid-template-columns:1.05fr .95fr;max-height:94vh;overflow:hidden}
+  .modal-media{padding:14px;min-height:auto}
+  .modal-info{max-height:94vh;padding:16px 18px}
+  .m-close{position:absolute;top:10px;right:10px}
+  .m-desc{margin-top:10px;font-size:12px;line-height:1.65}
+}
+</style>
+</head>
+<body>
+
+<!-- 乐器图形符号 -->
+<svg width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true" focusable="false">
+  <symbol id="ico-shaker" viewBox="0 0 48 48">
+    <g transform="rotate(-18 24 25)">
+      <path d="M18 27 L14 41" stroke="#8A5A2E" stroke-width="6.5" stroke-linecap="round"/>
+      <path d="M21 28 L18 42" stroke="#B07A3E" stroke-width="5" stroke-linecap="round"/>
+      <path d="M24 5C31.2 5 36 11 36 18.2 36 25.5 30.6 30 24 30 17.4 30 12 25.5 12 18.2 12 11 16.8 5 24 5Z" fill="#D98A3F"/>
+      <path d="M24 5c6.2 0 10.6 4.6 11.6 10.9C33.4 11.5 29.2 8 24 8s-9.4 3.5-11.6 7.9C13.4 9.6 17.8 5 24 5Z" fill="#EEB374" opacity=".8"/>
+      <g fill="#F8EAD2" opacity=".55">
+        <circle cx="18" cy="15" r="1.7"/><circle cx="24" cy="12.5" r="1.7"/><circle cx="30" cy="16" r="1.7"/>
+        <circle cx="20.5" cy="21.5" r="1.7"/><circle cx="27" cy="22.5" r="1.7"/><circle cx="31" cy="10.5" r="1.4"/>
+      </g>
+    </g>
+    <path d="M6.5 13.5c-2.2 4.3-2.1 9.6.2 13.8" fill="none" stroke="#D98A3F" stroke-width="2.4" stroke-linecap="round" opacity=".55"/>
+    <path d="M2.8 17.5c-1.2 3.1-1.1 6.8.3 9.7" fill="none" stroke="#D98A3F" stroke-width="2.1" stroke-linecap="round" opacity=".3"/>
+  </symbol>
+  <symbol id="ico-tube" viewBox="0 0 48 48">
+    <path d="M12 24h24c3.3 0 6 2.9 6 6.5S39.3 37 36 37H12c-3.3 0-6-2.9-6-6.5S8.7 24 12 24Z" fill="#C98A4B"/>
+    <ellipse cx="41.5" cy="30.5" rx="3.2" ry="6.5" fill="#9C6532"/>
+    <ellipse cx="7.2" cy="30.5" rx="3.2" ry="6.5" fill="#E6B477"/>
+    <rect x="14" y="28.6" width="18" height="3.6" rx="1.8" fill="#7B4A1F"/>
+    <rect x="14" y="33.2" width="9" height="2.4" rx="1.2" fill="#7B4A1F" opacity=".55"/>
+    <g transform="rotate(28 33 14)">
+      <rect x="30.6" y="3" width="4.4" height="17" rx="2.2" fill="#8B5A2B"/>
+      <circle cx="32.8" cy="5" r="5.2" fill="#EFCB9C"/>
+      <circle cx="32.8" cy="5" r="5.2" fill="none" stroke="#C79A63" stroke-width="1.4"/>
+    </g>
+    <path d="M9 15.5l3.2 3.6M5.8 21.5l4 2" stroke="#C98A4B" stroke-width="2.2" stroke-linecap="round" opacity=".55"/>
+  </symbol>
+  <symbol id="ico-bell" viewBox="0 0 48 48">
+    <g>
+      <path d="M16.5 13c-4.1 0-7.2 4-7.2 9 0 2.8.9 5 2.6 6.2h9.2c1.7-1.2 2.6-3.4 2.6-6.2 0-5-3.1-9-7.2-9Z" fill="#E7B646"/>
+      <path d="M16.5 13c-3.4 0-6.1 2.8-6.9 6.6C11.3 17 13.7 15 16.5 15s5.2 2 6.9 4.6c-.8-3.8-3.5-6.6-6.9-6.6Z" fill="#F8DA8A"/>
+      <rect x="15.2" y="7" width="2.6" height="7" rx="1.3" fill="#8E5A2B"/>
+      <circle cx="16.5" cy="5.2" r="2.5" fill="#8E5A2B"/>
+      <rect x="9.5" y="27.2" width="14" height="2.6" rx="1.3" fill="#B8862B"/>
+    </g>
+    <g>
+      <path d="M31.5 13c4.1 0 7.2 4 7.2 9 0 2.8-.9 5-2.6 6.2h-9.2c-1.7-1.2-2.6-3.4-2.6-6.2 0-5 3.1-9 7.2-9Z" fill="#E7B646"/>
+      <path d="M31.5 13c3.4 0 6.1 2.8 6.9 6.6C36.7 17 34.3 15 31.5 15s-5.2 2-6.9 4.6c.8-3.8 3.5-6.6 6.9-6.6Z" fill="#F8DA8A"/>
+      <rect x="30.2" y="7" width="2.6" height="7" rx="1.3" fill="#8E5A2B"/>
+      <circle cx="31.5" cy="5.2" r="2.5" fill="#8E5A2B"/>
+      <rect x="24.5" y="27.2" width="14" height="2.6" rx="1.3" fill="#B8862B"/>
+    </g>
+    <g stroke="#E8BE52" stroke-width="2" stroke-linecap="round">
+      <path d="M24 2.6v3.2"/><path d="M19.8 4.5l1.8 2.6"/><path d="M28.2 4.5l-1.8 2.6"/>
+    </g>
+  </symbol>
+  <symbol id="ico-drum" viewBox="0 0 48 48">
+    <g stroke-linecap="round">
+      <path d="M8 20.5v11.5c0 4.5 7.2 8 16 8s16-3.5 16-8V20.5" fill="#D1544C"/>
+      <path d="M8 20.5v11.5c0 4.5 7.2 8 16 8" fill="none" stroke="#B23F3A" stroke-width="2.6"/>
+      <ellipse cx="24" cy="20.5" rx="16" ry="7.6" fill="#F8E9CB"/>
+      <ellipse cx="24" cy="20.5" rx="16" ry="7.6" fill="none" stroke="#B23F3A" stroke-width="2.8"/>
+      <ellipse cx="24" cy="20.5" rx="12" ry="5.4" fill="none" stroke="#E3C998" stroke-width="1.2" opacity=".8"/>
+      <path d="M32 4.5l-7.5 13" stroke="#9A6B3A" stroke-width="3.2"/>
+      <path d="M41.5 8l-8 11.5" stroke="#9A6B3A" stroke-width="3.2"/>
+    </g>
+    <circle cx="31.4" cy="4.6" r="2.7" fill="#EFCB9C"/>
+    <circle cx="40.9" cy="8.1" r="2.7" fill="#EFCB9C"/>
+  </symbol>
+  <symbol id="ico-handbell" viewBox="0 0 48 48">
+    <g transform="rotate(-14 24 24)">
+      <rect x="21.2" y="3" width="5.6" height="10" rx="2.8" fill="#6D4525"/>
+      <path d="M14 15c-5.4 0-9.2 4.8-9.2 10.6 0 6 3.7 10.4 9.5 10.4h11.4c5.8 0 9.5-4.4 9.5-10.4 0-5.8-3.8-10.6-9.2-10.6Z" fill="#D8B045"/>
+      <path d="M15.2 16c-4.4 0-7.6 3.6-8.2 8.4 1.2-3.6 4.2-6.2 8.2-6.2s7 2.6 8.2 6.2c-.6-4.8-3.8-8.4-8.2-8.4Z" fill="#F3D776"/>
+      <rect x="9" y="35" width="12.5" height="3" rx="1.5" fill="#8E5C28"/>
+      <circle cx="15.2" cy="3.2" r="2.4" fill="#6D4525"/>
+    </g>
+  </symbol>
+  <symbol id="ico-doublereed" viewBox="0 0 48 48">
+    <g>
+      <rect x="6" y="20" width="19" height="16" rx="4" fill="#868E3E"/>
+      <rect x="6" y="20" width="19" height="7" rx="4" fill="#A6AE5C"/>
+      <ellipse cx="16.2" cy="29" rx="2.2" ry="4.5" fill="#525A20"/>
+    </g>
+    <g>
+      <rect x="24" y="12" width="19" height="16" rx="4" fill="#B28646"/>
+      <rect x="24" y="12" width="19" height="7" rx="4" fill="#D3A668"/>
+      <ellipse cx="34.2" cy="21" rx="2.2" ry="4.5" fill="#6C4020"/>
+    </g>
+    <g stroke="#6D4A22" stroke-width="2.2" stroke-linecap="round">
+      <path d="M15.5 36.5l12 6"/>
+      <path d="M33 28.5l7.5-1"/>
+    </g>
+    <circle cx="27.5" cy="42.5" r="1.4" fill="#6D4A22"/>
+  </symbol>
+  <symbol id="ico-triangle" viewBox="0 0 48 48">
+    <g stroke="#5A7FAE" stroke-width="3.4" stroke-linejoin="round" fill="none">
+      <path d="M12 34 L36 14 L36 34 Z"/>
+    </g>
+    <g stroke="#8CAFCC" stroke-width="1" fill="none" opacity=".55">
+      <path d="M14.6 33.2 L34.4 16 L34.4 33.2 Z"/>
+    </g>
+    <rect x="4.5" y="34" width="11" height="3.4" rx="1.7" fill="#436185"/>
+    <rect x="29.8" y="34" width="12" height="3.4" rx="1.7" fill="#436185"/>
+    <circle cx="41.4" cy="25" r="1.6" fill="#436185"/>
+    <g transform="rotate(-30 35 10)">
+      <rect x="33.4" y="2" width="3.2" height="16" rx="1.6" fill="#436185"/>
+      <circle cx="35" cy="1" r="2.4" fill="#7BA4C8"/>
+    </g>
+    <path d="M10.5 30.5c-1.5 3.8-1.5 8.3 0 12" fill="none" stroke="#8CAFCC" stroke-width="1.8" stroke-linecap="round" opacity=".55"/>
+  </symbol>
+  <symbol id="ico-tambourine" viewBox="0 0 48 48">
+    <ellipse cx="24" cy="30" rx="17" ry="6.4" fill="#C27236"/>
+    <ellipse cx="24" cy="30" rx="17" ry="6.4" fill="none" stroke="#8F4C1B" stroke-width="2.2"/>
+    <ellipse cx="24" cy="30" rx="13.4" ry="4.5" fill="#E2AA74"/>
+    <ellipse cx="24" cy="30" rx="13.4" ry="4.5" fill="none" stroke="#8F4C1B" stroke-width="1.2"/>
+    <g fill="#EECF6E">
+      <circle cx="8" cy="26" r="1.8"/><circle cx="14.5" cy="25" r="1.8"/>
+      <circle cx="20.5" cy="24.6" r="1.8"/><circle cx="27" cy="24.6" r="1.8"/>
+      <circle cx="33" cy="25" r="1.8"/><circle cx="40" cy="26" r="1.8"/>
+    </g>
+    <g transform="rotate(-24 24 16)">
+      <rect x="23" y="2" width="2" height="16" rx="1" fill="#8F4C1B"/>
+    </g>
+    <path d="M10 22c-1.8 3.4-1.8 7.6 0 11" fill="none" stroke="#EECF6E" stroke-width="1.8" stroke-linecap="round" opacity=".7"/>
+  </symbol>
+</svg>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 64 64" fill="none"><path d="M39 14v27.5a8.5 8.5 0 1 1-5-7.75V23l15-4.2v19.2a8.5 8.5 0 1 1-5-7.75V11.6z" fill="#f8f1df"/></svg>
+    </div>
+    <div>
+      <h1>节奏 · 音色工坊</h1>
+      <div class="sub">点击乐器看演示、听音色；拖进色块小框，让节奏在颜色里动起来</div>
+    </div>
+  </div>
+  <div class="top-actions">
+    <div class="top-note"><i></i>点击乐器卡片 · 拖拽到左上小框</div>
+    <button class="screen-btn" id="screenBtn" type="button" title="全屏并切换为横屏">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M7.5 10h.01M16.5 14h.01"/></svg>
+      <span>横屏</span>
+    </button>
+  </div>
+</header>
+
+<div class="landscape-tip" aria-hidden="true">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M12 18.5h.01"/></svg>
+  <span>横屏显示更完整，点右上角 <b>「横屏」</b> 一键切换</span>
+</div>
+
+<main class="layout">
+  <section class="stage-card" aria-label="节奏色块舞台">
+    <div class="stage" id="stage">
+      <svg class="score" id="score" viewBox="0 0 960 540" role="img" aria-label="五条彩色节奏谱">
+        <defs>
+          <filter id="softGlow" x="-60%" y="-20%" width="220%" height="140%">
+            <feGaussianBlur stdDeviation="7"/>
+          </filter>
+        </defs>
+        <g id="scoreBands"></g>
+        <g id="fxLayer" style="pointer-events:none"></g>
+      </svg>
+
+      <div class="dock" id="dock">
+        <div class="dock-box group-box" id="groupBox" role="group" aria-label="选择组别颜色">
+          <button class="swatch" data-group="green" style="--c:#a9c27b;--check:#fff" aria-label="绿色组" aria-pressed="true" title="绿色组"></button>
+          <button class="swatch" data-group="yellow" style="--c:#f0cf69;--check:#5c4a13" aria-label="黄色组" aria-pressed="false" title="黄色组"></button>
+          <button class="swatch" data-group="red" style="--c:#e2837f;--check:#fff" aria-label="红色组" aria-pressed="false" title="红色组"></button>
+          <button class="swatch" data-group="blue" style="--c:#8fa9cf;--check:#fff" aria-label="蓝色组" aria-pressed="false" title="蓝色组"></button>
+          <button class="swatch" data-group="gray" style="--c:#d8d8d8;--check:#3a3a3a" aria-label="灰色组" aria-pressed="false" title="灰色组（最多两件）"></button>
+        </div>
+        <div class="dock-box drop-box empty" id="dropBox" aria-label="乐器放置框">
+          <div class="drop-hint" id="dropHint">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            <span>拖入一件乐器</span>
+          </div>
+          <div class="chips" id="dropChips"></div>
+        </div>
+        <button class="play-fab" id="playBtn" aria-label="开始播放" disabled title="先拖入一个乐器">
+          <svg class="ic-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.53.85l10-6.5a1 1 0 0 0 0-1.7l-10-6.5A1 1 0 0 0 8 5.5Z"/></svg>
+          <svg class="ic-stop" viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="6.5" width="11" height="11" rx="2"/></svg>
+          <span id="playLabel">播放</span>
+        </button>
+      </div>
+    </div>
+    <div class="stage-foot">
+      <span class="cap-dot" id="captionDot"></span>
+      <span class="cap-label">当前组别</span>
+      <span class="cap-names" id="captionNames">沙锤 · 鼓</span>
+      <span class="cap-hint">点击色块可切换组别 · 播放时自动隐藏调节框</span>
+    </div>
+  </section>
+
+  <aside class="sidebar" aria-label="乐器库">
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>乐器音色</h2>
+          <p>点击卡片：看演示、听音色<br>每色一件乐器，拖拽或点 + 替换当前乐器</p>
+        </div>
+        <span class="count-badge" id="countBadge">4</span>
+      </div>
+      <div class="ins-list" id="instrumentList"></div>
+      <div class="drag-tip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01"/></svg>
+        拖动任意乐器卡片，放进舞台左上角的小框（每色只放一件）
+      </div>
+      <div class="panel-foot">
+        <button class="link-btn" id="resetAll" type="button">重置全部自定义</button>
+        <span class="storage-note">自动保存在本机</span>
+      </div>
+    </section>
+
+    <section class="gh-config" aria-label="GitHub 存档">
+      <div class="gh-head">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.69 5.54.69 11.81c0 4.99 3.23 9.22 7.72 10.71.57.11.78-.25.78-.55 0-.27-.01-.99-.02-1.94-3.14.68-3.8-.84-4.05-1.62-.14-.35-.73-1.62-1.56-1.94-.53-.28-1.28-.99-.01-1.01 1.18-.02 2.02 1.09 2.3 1.54 1.09 1.82 3.5 1.3 4.36.99.11-.77.41-1.3.75-1.6-2.66-.3-5.46-1.33-5.46-5.93 0-1.31.47-2.39 1.24-3.23-.13-.3-.54-1.52.12-3.17 0 0 1.01-.32 3.3 1.23a11.4 11.4 0 0 1 6 0c2.29-1.55 3.3-1.23 3.3-1.23.66 1.65.25 2.87.12 3.17.77.84 1.24 1.92 1.24 3.23 0 4.61-2.8 5.63-5.47 5.92.42.36.8 1.08.8 2.18 0 1.57-.02 2.84-.02 3.23 0 .3.21.67.78.55 4.48-1.49 7.71-5.72 7.71-10.71C23.31 5.54 18.27.5 12 .5z"/></svg>
+          跨设备存档
+        </h3>
+        <span class="gh-status" id="ghStatus">未配置</span>
+      </div>
+      <p class="gh-desc" id="ghDesc">连接 GitHub 仓库，把自定义内容存到云端。保存后，任何设备打开同一网址都能看到同一套乐器。</p>
+      <div id="ghFrozenBanner" hidden class="gh-frozen-banner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        当前存档已冻结 · 只读模式
+      </div>
+      <div class="gh-fields" id="ghFields">
+        <div class="gh-row tight">
+          <div class="gh-row" style="flex:1;min-width:0">
+            <label>用户名 / 组织</label>
+            <input id="ghUser" placeholder="octocat" autocomplete="off">
+          </div>
+          <div class="gh-row" style="flex:1;min-width:0">
+            <label>仓库名</label>
+            <input id="ghRepo" placeholder="rhythm-studio" autocomplete="off">
+          </div>
+        </div>
+        <div class="gh-row tight">
+          <div class="gh-row" style="flex:1;min-width:0">
+            <label>分支</label>
+            <input id="ghBranch" value="main" autocomplete="off">
+          </div>
+          <div class="gh-row" style="flex:1;min-width:0">
+            <label>存档目录</label>
+            <input id="ghPath" value="assets" autocomplete="off">
+          </div>
+        </div>
+        <div class="gh-row">
+          <label>Personal Access Token（只存在本机浏览器）</label>
+          <div class="gh-token-wrap">
+            <input id="ghToken" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+            <button type="button" class="gh-token-toggle" id="ghTokenToggle" aria-label="显示/隐藏">👁</button>
+          </div>
+        </div>
+      </div>
+      <div class="gh-actions">
+        <div class="gh-btn-row">
+          <button type="button" class="gh-btn primary" id="ghSaveConfig">保存配置</button>
+          <button type="button" class="gh-btn primary" id="ghSync">同步到云端</button>
+        </div>
+        <div class="gh-btn-row">
+          <button type="button" class="gh-btn" id="ghRefresh">从云端拉取</button>
+          <button type="button" class="gh-btn ghost" id="ghTestConn">测试连接</button>
+        </div>
+      </div>
+      <div class="gh-meta" id="ghMeta" hidden>
+        远端路径：<code id="ghRemotePath">-</code><br>
+        当前版本：<code id="ghHead">-</code> · 最后同步：<span id="ghSyncedAt">从未</span>
+      </div>
+      <div class="gh-global">
+        <label>
+          <input type="checkbox" id="ghAutoPull">
+          启动时自动从云端拉取最新版本
+        </label>
+        <button type="button" class="link-btn" id="ghLogout">清除配置</button>
+      </div>
+      <div id="ghFrozenActions" hidden>
+        <button type="button" class="gh-btn danger" id="ghFreeze" style="margin-top:8px;width:100%">冻结存档（保存后不可更改）</button>
+      </div>
+    </section>
+  </aside>
+</main>
+
+<!-- 乐器弹窗 -->
+<div class="overlay" id="overlay" hidden>
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <button class="m-close" id="mClose" aria-label="关闭">×</button>
+    <div class="modal-media" id="mMedia">
+      <div class="media-glow" aria-hidden="true"></div>
+      <div class="video-frame">
+        <video id="mVideo" controls playsinline loop preload="metadata" muted></video>
+        <div class="media-error" id="mediaError">
+          <strong>视频没能加载</strong>
+          <span>可以在右侧重新上传一个演示视频</span>
+        </div>
+        <div class="media-badge"><i></i><span id="mediaBadge">内置演示视频</span></div>
+        <button class="sound-toggle" id="soundToggle" aria-pressed="false" aria-label="切换视频声音" title="视频声音">
+          <svg class="ic-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="m16 9 5 6M21 9l-5 6"/></svg>
+          <svg class="ic-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="modal-info">
+      <div class="m-head">
+        <div class="m-icon" id="mIcon"></div>
+        <div class="m-title-row">
+          <h2 id="mTitle">沙锤</h2>
+          <div class="m-en" id="mEn">Maracas</div>
+        </div>
+      </div>
+      <p class="m-desc" id="mDesc"></p>
+      <div class="m-actions">
+        <button class="btn btn-primary" id="mTimbre" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+          聆听音色
+        </button>
+        <button class="btn" id="mAdd" type="button"><span class="btn-dot"></span><span id="mAddText">加入当前组别</span></button>
+      </div>
+
+      <div class="m-assets">
+        <div class="m-assets-head">
+          <h3>资源自定义</h3>
+          <span>图标 / 视频 / 音色 / 五色效果音频</span>
+        </div>
+        <div id="mAssets"></div>
+        <button class="m-reset" id="mReset" type="button">恢复本乐器的内置资源</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="fileInput" hidden>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const STORAGE_KEY = 'rhythm-studio.v1';
+  const GH_CONFIG_KEY = 'rhythm-studio.github.config';
+  const GH_STATE_KEY = 'rhythm-studio.github.state';
+  const GH_API = 'https://api.github.com';
+  const GH_RAW = 'https://raw.githubusercontent.com';
+
+  /* ================= 数据 ================= */
+  const GROUPS = {
+    green:  { label: '绿色', swatch: '#a9c27b', stroke: '#88a95b', fill: '#dfeccb', soft: '#eef4e4' },
+    yellow: { label: '黄色', swatch: '#f0cf69', stroke: '#d9b04a', fill: '#fbe8b7', soft: '#fbf2d8' },
+    red:    { label: '红色', swatch: '#e2837f', stroke: '#cf6d69', fill: '#f5caca', soft: '#f9e3e2' },
+    blue:   { label: '蓝色', swatch: '#8fa9cf', stroke: '#7693c1', fill: '#cbdcf0', soft: '#e6eef8' },
+    gray:   { label: '灰色', swatch: '#d8d8d8', stroke: '#b9b9b9', fill: '#e9e9e9', soft: '#f3f3f3' }
+  };
+  const GROUP_KEYS = ['green', 'yellow', 'red', 'blue', 'gray'];
+  const GROUP_CAPACITY = { green: 1, yellow: 1, red: 1, blue: 1, gray: 1 };
+
+  const INSTRUMENTS = [
+    {
+      id: 'shaker', name: '沙锤', en: 'Maracas', accent: '#C97C33', tint: '#F7E7D0',
+      tag: '沙沙声 · 流动节奏',
+      desc: '摇动沙锤，内部的沙粒撞击发出连续的沙沙声。声音轻盈，适合铺出流动的十六分音符，也常用来做伴奏的底色。',
+      video: 'assets/videos/shaker.mp4', poster: 'assets/posters/shaker.jpg'
+    },
+    {
+      id: 'tube', name: '单响筒', en: 'Tone Block', accent: '#A9703B', tint: '#F2E4D3',
+      tag: '清脆短音 · 重拍',
+      desc: '用木槌敲击开了细长音槽的木筒，声音短促清脆。单响筒常用来点出重拍或提示节奏的转折，余音很短。',
+      video: 'assets/videos/tube.mp4', poster: 'assets/posters/tube.jpg'
+    },
+    {
+      id: 'bell', name: '碰铃', en: 'Hand Bells', accent: '#C49A2F', tint: '#F8EDCB',
+      tag: '清亮金属声 · 点缀',
+      desc: '两只铜铃相互碰击，发出清亮、余音悠长的金属声。适合点缀强拍，或在乐句结尾留下一点亮光。',
+      video: 'assets/videos/bell.mp4', poster: 'assets/posters/bell.jpg'
+    },
+    {
+      id: 'drum', name: '鼓', en: 'Drum', accent: '#C4544C', tint: '#F7DBD7',
+      tag: '低沉有力 · 节奏核心',
+      desc: '鼓槌敲击鼓面，发出低沉、有力量的声音。鼓是节奏组的核心，常用稳定的四分音符撑起整段律动。',
+      video: 'assets/videos/drum.mp4', poster: 'assets/posters/drum.jpg'
+    },
+    {
+      id: 'handbell', name: '手摇铃', en: 'Hand Bell', accent: '#B45EA8', tint: '#F3DBEE',
+      tag: '连绵回响 · 柔和',
+      desc: '手持摇铃轻轻晃动，铃声连绵、带有颤动感。常用来在乐句之间留下柔和的回响，也适合铺在长音之下。'
+    },
+    {
+      id: 'doublereed', name: '双响筒', en: 'Double Block', accent: '#7E8A3C', tint: '#E6E9C7',
+      tag: '交替双音 · 活泼',
+      desc: '双响筒两侧音色稍有不同，敲击时能打出交替的高低两个音。适合活泼的节奏型，给乐句增添跳跃感。'
+    },
+    {
+      id: 'triangle', name: '三角铁', en: 'Triangle', accent: '#5A7FAE', tint: '#DCE6F1',
+      tag: '透亮泛音 · 余韵',
+      desc: '挂在架上的三角形金属片，用细棒敲击一角，发出透亮的泛音和悠长的余韵。常在重要节拍或乐句开头时轻轻点一下。'
+    },
+    {
+      id: 'tambourine', name: '铃鼓', en: 'Tambourine', accent: '#B86B2D', tint: '#F5E0C9',
+      tag: '多层金属 · 细碎',
+      desc: '一只圆木框上嵌有一圈金属小铃，拍奏时金属铃一起震颤。音色细碎热闹，能在律动里填进一层细碎的金属感。'
+    }
+  ];
+  const BY_ID = Object.fromEntries(INSTRUMENTS.map(i => [i.id, i]));
+
+  const q = x => ({ t: 'q', x });
+  const h = x => ({ t: 'h', x });
+  const pair = x => ({ t: 'pair', x });
+  const bar = x => ({ t: 'bar', x });
+  const rest = x => ({ t: 'rest', x });
+  const dbl = x => ({ t: 'dbl', x });
+
+  /* 每一条色块：位置、颜色、符号 */
+  const BLOCKS = [
+    { group: 'green', x: 22, y: 22, w: 914, h: 90, fill: '#cfdba6', ink: '#3c4a24',
+      items: [h(72), bar(213), q(264), pair(342), bar(456), q(527), q(590), bar(640), h(752), bar(860)] },
+    { group: 'yellow', x: 22, y: 124, w: 914, h: 90, fill: '#fae6a6', ink: '#6a5620',
+      items: [h(74), bar(214), pair(292), q(408), bar(456), pair(524), pair(640), bar(738), rest(792), bar(860)] },
+    { group: 'red', x: 22, y: 226, w: 914, h: 90, fill: '#e8a7ac', ink: '#3d1f24',
+      items: [pair(96), q(188), bar(228), rest(298), bar(452), pair(538), pair(656), bar(738), h(788), bar(862)] },
+    { group: 'red', x: 22, y: 328, w: 436, h: 90, fill: '#f4c4cc', ink: '#3f2126',
+      items: [pair(96), pair(178), bar(240), h(296), bar(452)] },
+    { group: 'blue', x: 464, y: 328, w: 472, h: 90, fill: '#b9cbe7', ink: '#1b2a44',
+      items: [pair(540), pair(656), bar(738), h(788), bar(862)] },
+    { group: 'blue', x: 22, y: 430, w: 436, h: 90, fill: '#b9cbe7', ink: '#1b2a44',
+      items: [q(70), q(132), bar(214), rest(300), bar(448)] },
+    { group: 'gray', x: 464, y: 430, w: 472, h: 90, fill: '#e7e7e7', ink: '#2b2f33',
+      items: [pair(540), pair(656), bar(738), h(788), dbl(858)] }
+  ];
+
+  const ASSET_LABEL = { icon: '图标', video: '演示视频', timbre: '音色音频', effect: '效果音频' };
+  const ASSET_NOTE = {
+    icon: 'PNG / SVG，建议透明背景',
+    video: 'MP4 / WebM，点击图标时播放',
+    timbre: '点击「聆听音色」时播放',
+    effect: '用于色块播放，也可用内置合成'
+  };
+  const ASSET_ACCEPT = { icon: 'image/*', video: 'video/*', timbre: 'audio/*', effect: 'audio/*' };
+  const ASSET_LIMIT = { icon: 8 * 1024 * 1024, video: 80 * 1024 * 1024, timbre: 30 * 1024 * 1024, effect: 30 * 1024 * 1024 };
+
+  const DEFAULT_STATE = {
+    group: 'green',
+    assignments: { green: ['shaker'], yellow: [], red: [], blue: [], gray: [] }
+  };
+
+  /* ================= 状态 ================= */
+  let state = loadState();
+  const assets = Object.fromEntries(INSTRUMENTS.map(i => [i.id, {
+    icon: null,
+    video: null,
+    timbre: null,
+    effects: Object.fromEntries(GROUP_KEYS.map(g => [g, null]))
+  }]));
+  const effectKey = (id, group) => id + ':effect:' + group;
+  const durationCache = new Map();
+
+  let currentId = null;
+  let playing = null;
+  let pendingUpload = null;
+  let previewAudio = null;
+  let demoTimer = 0;
+  let lastFocus = null;
+  let resetTimer = 0;
+  let fxCounter = 0;
+  let storageOK = true;
+
+  const els = {};
+
+  /* ================= 本地持久化 ================= */
+  function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        const assignments = {};
+        GROUP_KEYS.forEach(g => {
+          const arr = Array.isArray(saved.assignments && saved.assignments[g]) ? saved.assignments[g] : [];
+          assignments[g] = Array.from(new Set(arr.filter(id => BY_ID[id]))).slice(0, GROUP_CAPACITY[g] || 1);
+        });
+        return { group: GROUP_KEYS.includes(saved.group) ? saved.group : 'green', assignments };
+      }
+    } catch (e) {
+      storageOK = false;
+    }
+    return clone(DEFAULT_STATE);
+  }
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      storageOK = false;
+    }
+  }
+
+  /* ---- IndexedDB 存取自定义资源 ---- */
+  const DB_NAME = 'rhythm-studio-assets';
+  const STORE = 'files';
+  let dbPromise = null;
+
+  function openDB() {
+    if (dbPromise) return dbPromise;
+    dbPromise = new Promise((resolve, reject) => {
+      if (!('indexedDB' in window)) return reject(new Error('no idb'));
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        if (!req.result.objectStoreNames.contains(STORE)) req.result.createObjectStore(STORE);
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    return dbPromise;
+  }
+
+  function idbWrite(mode, fn) {
+    return openDB().then(db => new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, mode);
+      const store = tx.objectStore(STORE);
+      fn(store);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    }));
+  }
+
+  const idbPut = (key, val) => idbWrite('readwrite', s => s.put(val, key));
+  const idbDel = key => idbWrite('readwrite', s => s.delete(key));
+
+  function idbLoadAll() {
+    return openDB().then(db => new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readonly');
+      const store = tx.objectStore(STORE);
+      const keysReq = store.getAllKeys();
+      const valsReq = store.getAll();
+      tx.oncomplete = () => resolve(keysReq.result.map((k, i) => ({ key: k, val: valsReq.result[i] })));
+      tx.onerror = () => reject(tx.error);
+    })).catch(() => []);
+  }
+
+  function idbClear() {
+    return idbWrite('readwrite', s => s.clear()).catch(() => {});
+  }
+
+  function probeDuration(url, key) {
+    return new Promise(resolve => {
+      const a = new Audio();
+      let done = false;
+      const finish = d => {
+        if (done) return;
+        done = true;
+        durationCache.set(key, d);
+        a.removeAttribute('src');
+        a.load();
+        resolve(d);
+      };
+      const timer = setTimeout(() => finish(8), 1800);
+      a.preload = 'metadata';
+      a.onloadedmetadata = () => {
+        clearTimeout(timer);
+        const d = Number.isFinite(a.duration) && a.duration > 0 ? a.duration : 8;
+        finish(d);
+      };
+      a.onerror = () => {
+        clearTimeout(timer);
+        finish(8);
+      };
+      a.src = url;
+    });
+  }
+
+  async function loadSavedAssets() {
+    const rows = await idbLoadAll();
+    for (const row of rows) {
+      const parts = String(row.key).split(':');
+      const id = parts[0];
+      const type = parts[1];
+      if (!BY_ID[id] || !row.val || !row.val.blob) continue;
+      if (type === 'effect') {
+        const g = parts[2];
+        if (!GROUP_KEYS.includes(g)) continue;
+        const url = URL.createObjectURL(row.val.blob);
+        assets[id].effects[g] = { url, name: row.val.name || '', blob: row.val.blob };
+        probeDuration(url, effectKey(id, g));
+        continue;
+      }
+      if (type !== 'icon' && type !== 'video' && type !== 'timbre') continue;
+      const url = URL.createObjectURL(row.val.blob);
+      assets[id][type] = { url, name: row.val.name || '', blob: row.val.blob };
+      if (type === 'timbre') probeDuration(url, id + ':' + type);
+    }
+  }
+
+  /* ================= 图形工具 ================= */
+  function iconMarkup(id, cls) {
+    const a = assets[id] && assets[id].icon;
+    if (a) return '<img class="' + cls + ' custom-icon" src="' + a.url + '" alt="">';
+    return '<svg class="' + cls + '" viewBox="0 0 48 48" aria-hidden="true"><use href="#ico-' + id + '"></use></svg>';
+  }
+
+  function makeSVGIcon(id, size) {
+    const g = document.createElementNS(SVGNS, 'g');
+    if (assets[id] && assets[id].icon) {
+      const img = document.createElementNS(SVGNS, 'image');
+      img.setAttribute('href', assets[id].icon.url);
+      img.setAttribute('x', -size / 2);
+      img.setAttribute('y', -size / 2);
+      img.setAttribute('width', size);
+      img.setAttribute('height', size);
+      img.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+      g.appendChild(img);
+    } else {
+      const use = document.createElementNS(SVGNS, 'use');
+      use.setAttribute('href', '#ico-' + id);
+      use.setAttribute('x', -size / 2);
+      use.setAttribute('y', -size / 2);
+      use.setAttribute('width', size);
+      use.setAttribute('height', size);
+      g.appendChild(use);
+    }
+    return g;
+  }
+
+  /* ================= 绘制节奏谱 ================= */
+  function noteHead(x, baseY, ink) {
+    return '<ellipse cx="' + x + '" cy="' + baseY + '" rx="10" ry="7.6" transform="rotate(-24 ' + x + ' ' + baseY + ')" fill="' + ink + '"/>';
+  }
+
+  function stem(x, baseY, ink) {
+    return '<rect x="' + (x + 6.6) + '" y="' + (baseY - 47) + '" width="4" height="45" rx="2" fill="' + ink + '"/>';
+  }
+
+  function itemMarkup(item, baseY, ink, block) {
+    const x = item.x;
+    if (item.t === 'q') {
+      return '<g>' + noteHead(x, baseY, ink) + stem(x, baseY, ink) + '</g>';
+    }
+    if (item.t === 'h') {
+      return '<g>' +
+        '<ellipse cx="' + x + '" cy="' + baseY + '" rx="10" ry="7.6" transform="rotate(-24 ' + x + ' ' + baseY + ')" fill="none" stroke="' + ink + '" stroke-width="3.6"/>' +
+        stem(x, baseY, ink) + '</g>';
+    }
+    if (item.t === 'pair') {
+      return '<g>' +
+        noteHead(x, baseY, ink) + noteHead(x + 44, baseY, ink) +
+        stem(x, baseY, ink) + stem(x + 44, baseY, ink) +
+        '<path d="M' + (x + 6.6) + ' ' + (baseY - 47) + ' L' + (x + 50.6) + ' ' + (baseY - 47) + ' L' + (x + 50.6) + ' ' + (baseY - 38) + ' L' + (x + 6.6) + ' ' + (baseY - 38) + ' Z" fill="' + ink + '"/>' +
+        '</g>';
+    }
+    if (item.t === 'rest') {
+      return '<g>' +
+        '<rect x="' + (x - 24) + '" y="' + (baseY - 5) + '" width="48" height="11" rx="1.6" fill="' + ink + '"/>' +
+        '<rect x="' + (x - 13) + '" y="' + (baseY - 15) + '" width="26" height="10" rx="1.6" fill="' + ink + '"/>' +
+        '</g>';
+    }
+    if (item.t === 'bar') {
+      return '<rect x="' + (x - 2.1) + '" y="' + (block.y + 15) + '" width="4.2" height="60" rx="2.1" fill="' + ink + '"/>';
+    }
+    if (item.t === 'dbl') {
+      return '<rect x="' + (x - 5) + '" y="' + (block.y + 15) + '" width="3.6" height="60" rx="1.8" fill="' + ink + '"/>' +
+             '<rect x="' + (x + 2) + '" y="' + (block.y + 15) + '" width="3.6" height="60" rx="1.8" fill="' + ink + '"/>';
+    }
+    return '';
+  }
+
+  function buildScore() {
+    const bands = $('#scoreBands');
+    const html = BLOCKS.map((block, i) => {
+      const baseY = block.y + 56;
+      const g = GROUPS[block.group];
+      const items = block.items.map(it => itemMarkup(it, baseY, block.ink, block)).join('');
+      return '<g class="band" data-group="' + block.group + '" data-index="' + i + '">' +
+        '<rect x="' + block.x + '" y="' + block.y + '" width="' + block.w + '" height="' + block.h + '" rx="3" fill="' + block.fill + '"/>' +
+        '<rect class="band-shade" x="' + block.x + '" y="' + block.y + '" width="' + block.w + '" height="' + block.h + '" rx="3" opacity="0"/>' +
+        items +
+        '<rect class="band-pulse" x="' + block.x + '" y="' + block.y + '" width="' + block.w + '" height="' + block.h + '" rx="3"/>' +
+        '<rect class="band-outline" x="' + (block.x + 1.5) + '" y="' + (block.y + 1.5) + '" width="' + (block.w - 3) + '" height="' + (block.h - 3) + '" rx="2" stroke="' + g.stroke + '" opacity="0"/>' +
+        '</g>';
+    }).join('');
+    bands.innerHTML = html;
+  }
+
+  /* ================= 界面渲染 ================= */
+  function groupOf(id) {
+    return GROUP_KEYS.filter(g => state.assignments[g].includes(id));
+  }
+
+  function hasCustom(id) {
+    const a = assets[id];
+    return !!(a.icon || a.video || a.timbre || GROUP_KEYS.some(g => a.effects[g]));
+  }
+
+  function renderCards() {
+    const list = els.instrumentList;
+    list.innerHTML = INSTRUMENTS.map(ins => {
+      const assigned = groupOf(ins.id);
+      const dots = GROUP_KEYS.map(g =>
+        '<i class="' + (state.assignments[g].includes(ins.id) ? 'on' : '') + '" style="--dot:' + GROUPS[g].swatch + '" title="' +
+        (state.assignments[g].includes(ins.id) ? '已加入' + GROUPS[g].label + '组' : '') + '"></i>'
+      ).join('');
+      const custom = hasCustom(ins.id) ? '<span class="ins-badge">自定义</span>' : '';
+      return '<article class="ins-card" draggable="true" data-id="' + ins.id + '" tabindex="0" role="button" ' +
+        'aria-label="' + ins.name + '，点击查看演示" style="--accent:' + ins.accent + ';--tint:' + ins.tint + '">' +
+        '<div class="ins-icon">' + iconMarkup(ins.id, 'ins-svg') + '</div>' +
+        '<div class="ins-body">' +
+          '<div class="ins-title"><h3>' + ins.name + '</h3><span class="ins-en">' + ins.en + '</span>' + custom + '</div>' +
+          '<p>' + ins.tag + '</p>' +
+          '<div class="assigned-dots" aria-hidden="true">' + dots + '</div>' +
+        '</div>' +
+        '<button class="ins-add" type="button" data-add="' + ins.id + '" aria-label="把' + ins.name + '加入当前组别" title="加入当前组别">+</button>' +
+      '</article>';
+    }).join('');
+    els.countBadge.textContent = INSTRUMENTS.length;
+  }
+
+  function renderDock() {
+    const g = GROUPS[state.group];
+    const cap = GROUP_CAPACITY[state.group] || 1;
+    document.documentElement.style.setProperty('--group-accent', g.stroke);
+    document.documentElement.style.setProperty('--group-soft', g.soft);
+    $$('.swatch', els.groupBox).forEach(btn => {
+      btn.setAttribute('aria-pressed', String(btn.dataset.group === state.group));
+    });
+    const ids = state.assignments[state.group];
+    els.dropChips.innerHTML = ids.map(id => {
+      const ins = BY_ID[id];
+      return '<div class="chip" data-id="' + id + '" title="' + ins.name + '">' +
+        '<span class="chip-icon">' + iconMarkup(id, 'chip-svg') + '</span>' +
+        '<button class="chip-x" type="button" data-remove="' + id + '" aria-label="从当前组别移除' + ins.name + '">×</button>' +
+      '</div>';
+    }).join('');
+    els.dropBox.classList.toggle('empty', ids.length === 0);
+    const room = cap - ids.length;
+    els.dropHint.querySelector('span').textContent = ids.length === 0
+      ? ('拖入' + (cap === 1 ? '一件' : '最多 ' + cap + ' 件') + '乐器')
+      : (room > 0 ? ('还能放 ' + room + ' 件乐器') : '已满，拖入会替换最早一件');
+    els.dropHint.style.display = ids.length && room === 0 ? 'none' : (ids.length ? 'flex' : 'flex');
+    updatePlayButton();
+    renderCaption();
+    updateSelection();
+  }
+
+  function renderCaption() {
+    const ids = state.assignments[state.group];
+    els.captionDot.style.background = GROUPS[state.group].swatch;
+    els.captionNames.textContent = ids.length ? ids.map(id => BY_ID[id].name).join(' · ') : '还没有乐器';
+  }
+
+  function updateSelection() {
+    $$('.band', els.score).forEach(band => {
+      const on = band.dataset.group === state.group;
+      const shade = $('.band-shade', band);
+      const outline = $('.band-outline', band);
+      if (shade) shade.style.opacity = on ? '0.15' : '0';
+      if (outline) outline.style.opacity = on ? '0.7' : '0';
+    });
+  }
+
+  function updatePlayButton() {
+    const n = state.assignments[state.group].length;
+    const isPlaying = !!playing;
+    els.playBtn.disabled = !isPlaying && n === 0;
+    els.playBtn.classList.toggle('is-stop', isPlaying);
+    els.playLabel.textContent = isPlaying ? '停止' : '播放';
+    els.playBtn.setAttribute('aria-label', isPlaying ? '停止播放' : '开始播放');
+    els.playBtn.title = isPlaying ? '停止播放' : (n ? '播放当前组别' : '先拖入一个乐器');
+  }
+
+  function renderAll() {
+    renderCards();
+    renderDock();
+    if (currentId) {
+      renderModalMeta();
+      renderModalAssets();
+    }
+  }
+
+  /* ================= 组别与分配 ================= */
+  function setGroup(g) {
+    if (!GROUP_KEYS.includes(g) || g === state.group) return;
+    if (playing) stopPlayback();
+    state.group = g;
+    saveState();
+    renderDock();
+    renderCards();
+    if (currentId) renderModalActions();
+  }
+
+  function addToGroup(id, group) {
+    const g = group || state.group;
+    const arr = state.assignments[g];
+    if (!arr) return;
+    const cap = GROUP_CAPACITY[g] || 1;
+    const has = arr.includes(id);
+    if (has) {
+      toast(BY_ID[id].name + ' 已经在' + GROUPS[g].label + '组里了');
+      pulseDrop();
+      return;
+    }
+    if (cap === 1) {
+      const prev = arr[0];
+      state.assignments[g] = [id];
+      saveState();
+      renderAll();
+      if (currentId) renderModalActions();
+      toast(prev
+        ? BY_ID[id].name + ' 已替换' + GROUPS[g].label + '组的' + BY_ID[prev].name
+        : BY_ID[id].name + ' 已加入' + GROUPS[g].label + '组');
+    } else {
+      if (arr.length >= cap) {
+        const prev = arr[0];
+        state.assignments[g] = arr.slice(1).concat([id]);
+        saveState();
+        renderAll();
+        if (currentId) renderModalActions();
+        toast(BY_ID[id].name + ' 已替换' + GROUPS[g].label + '组的' + BY_ID[prev].name);
+      } else {
+        state.assignments[g] = arr.concat([id]);
+        saveState();
+        renderAll();
+        if (currentId) renderModalActions();
+        toast(BY_ID[id].name + ' 已加入' + GROUPS[g].label + '组（还能再放 ' + (cap - arr.length - 1) + ' 件）');
+      }
+    }
+    pulseDrop();
+  }
+
+  function removeFromGroup(id, group) {
+    const g = group || state.group;
+    state.assignments[g] = state.assignments[g].filter(x => x !== id);
+    saveState();
+    renderAll();
+    if (currentId) renderModalActions();
+  }
+
+  function pulseDrop() {
+    els.dropBox.animate(
+      [{ transform: 'scale(1)' }, { transform: 'scale(1.05)' }, { transform: 'scale(1)' }],
+      { duration: 280, easing: 'ease-out' }
+    );
+  }
+
+  /* ================= 音色合成 ================= */
+  const AudioEngine = (() => {
+    let ctx = null;
+    let master = null;
+    let noiseBuf = null;
+
+    function ensure() {
+      if (!ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        ctx = new AC();
+        const comp = ctx.createDynamicsCompressor();
+        comp.threshold.value = -16;
+        comp.knee.value = 24;
+        comp.ratio.value = 8;
+        master = ctx.createGain();
+        master.gain.value = 0.62;
+        master.connect(comp);
+        comp.connect(ctx.destination);
+      }
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+      return ctx;
+    }
+
+    function noise() {
+      if (noiseBuf) return noiseBuf;
+      const len = Math.floor(ctx.sampleRate * 0.5);
+      noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const data = noiseBuf.getChannelData(0);
+      for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+      return noiseBuf;
+    }
+
+    function shaker(t, gain) {
+      const src = ctx.createBufferSource();
+      src.buffer = noise();
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 5200;
+      bp.Q.value = 0.8;
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 2200;
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0.0001, t);
+      env.gain.exponentialRampToValueAtTime(0.85 * gain, t + 0.008);
+      env.gain.exponentialRampToValueAtTime(0.0001, t + 0.17);
+      src.connect(bp); bp.connect(hp); hp.connect(env); env.connect(master);
+      src.start(t);
+      src.stop(t + 0.2);
+    }
+
+    function tube(t, gain) {
+      const e = ctx.createGain();
+      e.gain.setValueAtTime(0.0001, t);
+      e.gain.exponentialRampToValueAtTime(0.55 * gain, t + 0.004);
+      e.gain.exponentialRampToValueAtTime(0.0001, t + 0.11);
+      e.connect(master);
+
+      const o1 = ctx.createOscillator();
+      o1.type = 'sine';
+      o1.frequency.setValueAtTime(920, t);
+      o1.frequency.exponentialRampToValueAtTime(760, t + 0.07);
+      const o2 = ctx.createOscillator();
+      o2.type = 'sine';
+      o2.frequency.setValueAtTime(1460, t);
+      const g2 = ctx.createGain();
+      g2.gain.value = 0.45;
+      o1.connect(e); o2.connect(g2); g2.connect(e);
+      o1.start(t); o2.start(t);
+      o1.stop(t + 0.13); o2.stop(t + 0.13);
+
+      const src = ctx.createBufferSource();
+      src.buffer = noise();
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 3000;
+      const ne = ctx.createGain();
+      ne.gain.setValueAtTime(0.22 * gain, t);
+      ne.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
+      src.connect(hp); hp.connect(ne); ne.connect(master);
+      src.start(t); src.stop(t + 0.04);
+    }
+
+    function bell(t, gain) {
+      const partials = [
+        [1046.5, 0.32, 1.5],
+        [2093, 0.14, 1.05],
+        [2637, 0.09, 0.8],
+        [3520, 0.045, 0.6]
+      ];
+      partials.forEach(([freq, amp, dur]) => {
+        const o = ctx.createOscillator();
+        o.type = 'sine';
+        o.frequency.value = freq;
+        const e = ctx.createGain();
+        e.gain.setValueAtTime(0.0001, t);
+        e.gain.exponentialRampToValueAtTime(amp * gain, t + 0.006);
+        e.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(e); e.connect(master);
+        o.start(t); o.stop(t + dur + 0.05);
+      });
+
+      const src = ctx.createBufferSource();
+      src.buffer = noise();
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 4200;
+      const ne = ctx.createGain();
+      ne.gain.setValueAtTime(0.12 * gain, t);
+      ne.gain.exponentialRampToValueAtTime(0.0001, t + 0.02);
+      src.connect(hp); hp.connect(ne); ne.connect(master);
+      src.start(t); src.stop(t + 0.03);
+    }
+
+    function drum(t, gain) {
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(155, t);
+      o.frequency.exponentialRampToValueAtTime(52, t + 0.19);
+      const e = ctx.createGain();
+      e.gain.setValueAtTime(0.0001, t);
+      e.gain.exponentialRampToValueAtTime(0.95 * gain, t + 0.006);
+      e.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+      o.connect(e); e.connect(master);
+      o.start(t); o.stop(t + 0.45);
+
+      const src = ctx.createBufferSource();
+      src.buffer = noise();
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 900;
+      const ne = ctx.createGain();
+      ne.gain.setValueAtTime(0.28 * gain, t);
+      ne.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
+      src.connect(lp); lp.connect(ne); ne.connect(master);
+      src.start(t); src.stop(t + 0.12);
+    }
+
+    function handbell(t, gain) {
+      // 柔和的铃声 + 轻微颤音 + 较长衰减
+      const partials = [
+        [880, 0.32, 1.8],
+        [1760, 0.18, 1.3],
+        [2640, 0.09, 1.0]
+      ];
+      partials.forEach(([freq, amp, dur]) => {
+        const o = ctx.createOscillator();
+        o.type = 'sine';
+        o.frequency.value = freq;
+        const e = ctx.createGain();
+        e.gain.setValueAtTime(0.0001, t);
+        e.gain.exponentialRampToValueAtTime(amp * gain, t + 0.01);
+        e.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        // 轻微颤音
+        const lfo = ctx.createOscillator();
+        lfo.frequency.value = 5.5;
+        const lfoGain = ctx.createGain();
+        lfoGain.gain.value = 0.03 * amp * gain;
+        lfo.connect(lfoGain); lfoGain.connect(e.gain);
+        lfo.start(t); lfo.stop(t + dur + 0.05);
+        o.connect(e); e.connect(master);
+        o.start(t); o.stop(t + dur + 0.1);
+      });
+    }
+
+    function doublereed(t, gain) {
+      // 一低一高两个单响筒音色，间隔 0.04s
+      const toneA = (when, amp) => {
+        const e = ctx.createGain();
+        e.gain.setValueAtTime(0.0001, when);
+        e.gain.exponentialRampToValueAtTime(amp * gain, when + 0.004);
+        e.gain.exponentialRampToValueAtTime(0.0001, when + 0.1);
+        e.connect(master);
+        const o1 = ctx.createOscillator();
+        o1.type = 'sine';
+        o1.frequency.setValueAtTime(560, when);
+        o1.frequency.exponentialRampToValueAtTime(460, when + 0.06);
+        const o2 = ctx.createOscillator();
+        o2.type = 'sine';
+        o2.frequency.value = 880;
+        const g2 = ctx.createGain();
+        g2.gain.value = 0.4;
+        o1.connect(e); o2.connect(g2); g2.connect(e);
+        o1.start(when); o2.start(when);
+        o1.stop(when + 0.13); o2.stop(when + 0.13);
+      };
+      const toneB = (when, amp) => {
+        const e = ctx.createGain();
+        e.gain.setValueAtTime(0.0001, when);
+        e.gain.exponentialRampToValueAtTime(amp * gain, when + 0.004);
+        e.gain.exponentialRampToValueAtTime(0.0001, when + 0.1);
+        e.connect(master);
+        const o1 = ctx.createOscillator();
+        o1.type = 'sine';
+        o1.frequency.setValueAtTime(880, when);
+        o1.frequency.exponentialRampToValueAtTime(720, when + 0.06);
+        const o2 = ctx.createOscillator();
+        o2.type = 'sine';
+        o2.frequency.value = 1320;
+        const g2 = ctx.createGain();
+        g2.gain.value = 0.4;
+        o1.connect(e); o2.connect(g2); g2.connect(e);
+        o1.start(when); o2.start(when);
+        o1.stop(when + 0.13); o2.stop(when + 0.13);
+      };
+      toneA(t, 0.5);
+      toneB(t + 0.045, 0.4);
+    }
+
+    function triangle(t, gain) {
+      // 纯高频金属，多泛音叠加 + 较长衰减
+      const partials = [
+        [1320, 0.22, 2.4],
+        [1980, 0.11, 1.8],
+        [2640, 0.08, 1.4],
+        [3520, 0.045, 1.1]
+      ];
+      partials.forEach(([freq, amp, dur]) => {
+        const o = ctx.createOscillator();
+        o.type = 'sine';
+        o.frequency.value = freq;
+        const e = ctx.createGain();
+        e.gain.setValueAtTime(0.0001, t);
+        e.gain.exponentialRampToValueAtTime(amp * gain, t + 0.005);
+        e.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(e); e.connect(master);
+        o.start(t); o.stop(t + dur + 0.1);
+      });
+      const src = ctx.createBufferSource();
+      src.buffer = noise();
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 5200;
+      const ne = ctx.createGain();
+      ne.gain.setValueAtTime(0.07 * gain, t);
+      ne.gain.exponentialRampToValueAtTime(0.0001, t + 0.02);
+      src.connect(hp); hp.connect(ne); ne.connect(master);
+      src.start(t); src.stop(t + 0.03);
+    }
+
+    function tambourine(t, gain) {
+      // 多层小金属铃的短促噪声簇
+      const src = ctx.createBufferSource();
+      src.buffer = noise();
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 3600;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 7200;
+      bp.Q.value = 0.7;
+      const e = ctx.createGain();
+      e.gain.setValueAtTime(0.0001, t);
+      e.gain.exponentialRampToValueAtTime(0.35 * gain, t + 0.005);
+      e.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+      src.connect(hp); hp.connect(bp); bp.connect(e); e.connect(master);
+      src.start(t); src.stop(t + 0.16);
+
+      // 再加 2 个稍微偏移的小噪点，模拟多个金属铃先后振动
+      const offs = [0.018, 0.038];
+      offs.forEach(d => {
+        const s2 = ctx.createBufferSource();
+        s2.buffer = noise();
+        const e2 = ctx.createGain();
+        e2.gain.setValueAtTime(0.0001, t + d);
+        e2.gain.exponentialRampToValueAtTime(0.22 * gain, t + d + 0.004);
+        e2.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.07);
+        const hp2 = ctx.createBiquadFilter();
+        hp2.type = 'highpass';
+        hp2.frequency.value = 4200;
+        s2.connect(hp2); hp2.connect(e2); e2.connect(master);
+        s2.start(t + d); s2.stop(t + d + 0.08);
+      });
+    }
+
+    function hit(id, when, gain) {
+      ensure();
+      const t = when || ctx.currentTime;
+      const g = gain == null ? 1 : gain;
+      if (id === 'shaker') shaker(t, g);
+      else if (id === 'tube') tube(t, g);
+      else if (id === 'bell') bell(t, g);
+      else if (id === 'drum') drum(t, g);
+      else if (id === 'handbell') handbell(t, g);
+      else if (id === 'doublereed') doublereed(t, g);
+      else if (id === 'triangle') triangle(t, g);
+      else tambourine(t, g);
+    }
+
+    function playPattern(id, times, t0) {
+      ensure();
+      times.forEach(t => hit(id, t0 + t, 0.9));
+    }
+
+    function demo(id) {
+      ensure();
+      const t = ctx.currentTime + 0.04;
+      if (id === 'bell' || id === 'handbell' || id === 'triangle') {
+        hit(id, t, 1);
+      } else if (id === 'shaker' || id === 'tambourine') {
+        hit(id, t, 0.95);
+        hit(id, t + 0.18, 0.6);
+        hit(id, t + 0.36, 0.75);
+      } else {
+        hit(id, t, 0.95);
+        hit(id, t + 0.26, 0.75);
+      }
+    }
+
+    return { ensure, hit, playPattern, demo };
+  })();
+
+  function stopPreviewAudio() {
+    if (previewAudio) {
+      try { previewAudio.pause(); } catch (e) {}
+      previewAudio = null;
+    }
+  }
+
+  async function playTimbrePreview(id) {
+    stopPreviewAudio();
+    const a = assets[id].timbre;
+    if (a) {
+      const audio = new Audio(a.url);
+      audio.volume = 0.95;
+      previewAudio = audio;
+      audio.play().catch(() => toast('音频无法播放，请重新上传'));
+    } else {
+      AudioEngine.demo(id);
+    }
+  }
+
+  function playEffectPreview(id, group) {
+    stopPreviewAudio();
+    const g = GROUP_KEYS.includes(group) ? group : state.group;
+    const a = assets[id].effects[g];
+    if (a) {
+      const audio = new Audio(a.url);
+      audio.volume = 0.95;
+      previewAudio = audio;
+      audio.play().catch(() => toast('音频无法播放，请重新上传'));
+      return;
+    }
+    AudioEngine.ensure();
+    const blocks = BLOCKS
+      .filter(b => b.group === g)
+      .sort((a, b) => a.y - b.y || a.x - b.x);
+    if (!blocks.length) return;
+    const totalW = blocks.reduce((s, b) => s + b.w, 0) || 1;
+    const D = 2.6;
+    const times = [];
+    let cum = 0;
+    blocks.forEach(b => {
+      const start = D * cum / totalW;
+      cum += b.w;
+      const dur = D * b.w / totalW;
+      blockNotes(b).forEach(x => {
+        const local = Math.max(0, Math.min(1, (x - b.x) / b.w));
+        times.push(start + local * dur);
+      });
+    });
+    const t0 = AudioEngine.ensure().currentTime + 0.08;
+    AudioEngine.playPattern(id, times, t0);
+  }
+
+  /* ================= 播放色块效果 ================= */
+  function blockNotes(block) {
+    const out = [];
+    block.items.forEach(it => {
+      if (it.t === 'q' || it.t === 'h') out.push(it.x);
+      else if (it.t === 'pair') out.push(it.x, it.x + 44);
+    });
+    return out.sort((a, b) => a - b);
+  }
+
+  function makePlayhead(block, accent) {
+    const g = document.createElementNS(SVGNS, 'g');
+    g.setAttribute('class', 'playhead-group');
+    g.style.opacity = '0';
+    g.setAttribute('transform', 'translate(' + block.x + ' 0)');
+    const halo = document.createElementNS(SVGNS, 'rect');
+    halo.setAttribute('x', 0);
+    halo.setAttribute('y', block.y + 5);
+    halo.setAttribute('width', 22);
+    halo.setAttribute('height', block.h - 10);
+    halo.setAttribute('rx', 11);
+    halo.setAttribute('fill', accent);
+    halo.setAttribute('opacity', '0.32');
+    halo.setAttribute('filter', 'url(#softGlow)');
+    const core = document.createElementNS(SVGNS, 'rect');
+    core.setAttribute('x', 9);
+    core.setAttribute('y', block.y + 6);
+    core.setAttribute('width', 3);
+    core.setAttribute('height', block.h - 12);
+    core.setAttribute('rx', 1.5);
+    core.setAttribute('fill', '#fffdf4');
+    core.setAttribute('opacity', '0.95');
+    g.appendChild(halo);
+    g.appendChild(core);
+    return g;
+  }
+
+  function spawnNoteFx(x, y, instrumentId, accent) {
+    const wrap = document.createElementNS(SVGNS, 'g');
+    wrap.setAttribute('transform', 'translate(' + x + ' ' + y + ')');
+    const pop = document.createElementNS(SVGNS, 'g');
+    pop.setAttribute('class', 'fx-pop');
+
+    const bg = document.createElementNS(SVGNS, 'circle');
+    bg.setAttribute('r', '19');
+    bg.setAttribute('fill', '#fffdf7');
+    bg.setAttribute('opacity', '0.94');
+
+    const ring = document.createElementNS(SVGNS, 'circle');
+    ring.setAttribute('class', 'fx-ring');
+    ring.setAttribute('r', '19');
+    ring.setAttribute('fill', 'none');
+    ring.setAttribute('stroke', accent);
+    ring.setAttribute('stroke-width', '2');
+
+    const edge = document.createElementNS(SVGNS, 'circle');
+    edge.setAttribute('r', '19');
+    edge.setAttribute('fill', 'none');
+    edge.setAttribute('stroke', accent);
+    edge.setAttribute('stroke-width', '1.6');
+    edge.setAttribute('opacity', '0.65');
+
+    pop.appendChild(bg);
+    pop.appendChild(edge);
+    pop.appendChild(makeSVGIcon(instrumentId, 27));
+    pop.appendChild(ring);
+    wrap.appendChild(pop);
+
+    els.fxLayer.appendChild(wrap);
+    pop.addEventListener('animationend', e => {
+      if (e.animationName === 'fxPop') wrap.remove();
+    });
+    setTimeout(() => { if (wrap.parentNode) wrap.remove(); }, 1400);
+  }
+
+  async function startPlayback() {
+    if (playing) return;
+    const ids = state.assignments[state.group].slice();
+    if (!ids.length) {
+      toast('先拖一个乐器到左上角的小框里');
+      return;
+    }
+    const blocks = BLOCKS
+      .filter(b => b.group === state.group)
+      .sort((a, b) => a.y - b.y || a.x - b.x);
+    if (!blocks.length) return;
+    const totalW = blocks.reduce((s, b) => s + b.w, 0) || 1;
+
+    const ctx = AudioEngine.ensure();
+    try { await ctx.resume(); } catch (e) {}
+
+    const withAudio = ids.filter(id => assets[id].effects[state.group]);
+    const durations = withAudio.map(id => durationCache.get(effectKey(id, state.group)) || 0).filter(n => n > 0);
+    let D;
+    if (withAudio.length && durations.length) {
+      D = Math.max.apply(null, durations);
+      if (withAudio.length < ids.length) D = Math.max(D, 4.8 * totalW / 912);
+    } else {
+      D = 4.8 * totalW / 912;
+    }
+    D = Math.min(120, Math.max(2.2, D));
+
+    /* 按从上到下、同一行从左到右切成时间段 */
+    let cum = 0;
+    const segs = blocks.map(b => {
+      const start = D * cum / totalW;
+      cum += b.w;
+      const end = D * cum / totalW;
+      return { block: b, start, dur: Math.max(0.001, end - start) };
+    });
+
+    const audios = [];
+    withAudio.forEach(id => {
+      const audio = new Audio(assets[id].effects[state.group].url);
+      audio.volume = 0.95;
+      audio.preload = 'auto';
+      audio.play().catch(() => {});
+      audios.push(audio);
+    });
+
+    const t0 = ctx.currentTime + 0.1;
+    ids.forEach(id => {
+      if (assets[id].effects[state.group]) return;
+      const times = [];
+      segs.forEach(s => {
+        blockNotes(s.block).forEach(x => {
+          const local = Math.max(0, Math.min(1, (x - s.block.x) / s.block.w));
+          times.push(s.start + local * s.dur);
+        });
+      });
+      AudioEngine.playPattern(id, times, t0);
+    });
+
+    playing = {
+      ids, segs, D,
+      start: performance.now(),
+      audios,
+      raf: 0,
+      fired: new Set(),
+      playheads: [],
+      activeBand: -1
+    };
+
+    $$('.playhead-group', els.fxLayer).forEach(n => n.remove());
+    segs.forEach(s => {
+      const g = makePlayhead(s.block, GROUPS[state.group].stroke);
+      els.fxLayer.appendChild(g);
+      playing.playheads.push(g);
+    });
+
+    document.body.classList.add('is-playing');
+    updatePlayButton();
+
+    const tick = () => {
+      if (!playing) return;
+      const elapsed = (performance.now() - playing.start) / 1000;
+      const p = Math.min(elapsed / playing.D, 1);
+
+      let ai = playing.segs.findIndex(s => elapsed < s.start + s.dur);
+      if (ai < 0) ai = playing.segs.length - 1;
+      const seg = playing.segs[ai];
+      const local = Math.max(0, Math.min(1, (elapsed - seg.start) / seg.dur));
+
+      playing.playheads.forEach((g, i) => {
+        if (i === ai) {
+          g.style.opacity = '1';
+          const x = seg.block.x + local * seg.block.w;
+          g.setAttribute('transform', 'translate(' + x.toFixed(2) + ' 0)');
+        } else {
+          g.style.opacity = '0';
+        }
+      });
+
+      if (playing.activeBand !== ai) {
+        $$('.band.playing', els.bands).forEach(el => el.classList.remove('playing'));
+        const el = $('.band[data-index="' + BLOCKS.indexOf(seg.block) + '"]', els.bands);
+        if (el) el.classList.add('playing');
+        playing.activeBand = ai;
+      }
+
+      playing.segs.forEach((s, si) => {
+        blockNotes(s.block).forEach(nx => {
+          const key = si + ':' + nx;
+          if (playing.fired.has(key)) return;
+          const frac = Math.max(0, Math.min(1, (nx - s.block.x) / s.block.w));
+          if (elapsed >= s.start + frac * s.dur - 0.002) {
+            playing.fired.add(key);
+            const insId = playing.ids[fxCounter++ % playing.ids.length];
+            spawnNoteFx(nx, s.block.y + 42, insId, BY_ID[insId].accent);
+          }
+        });
+      });
+
+      if (p >= 1) {
+        finishPlayback();
+        return;
+      }
+      playing.raf = requestAnimationFrame(tick);
+    };
+
+    playing.raf = requestAnimationFrame(tick);
+    toast('正在播放：' + ids.map(id => BY_ID[id].name).join('、'));
+  }
+
+  function finishPlayback() {
+    if (!playing) return;
+    const p = playing;
+    playing = null;
+    cancelAnimationFrame(p.raf);
+
+    p.audios.forEach(a => {
+      try { a.pause(); } catch (e) {}
+    });
+
+    p.playheads.forEach(g => {
+      g.style.opacity = '0';
+      setTimeout(() => g.remove(), 320);
+    });
+
+    $$('.band.playing', els.bands).forEach(el => el.classList.remove('playing'));
+    document.body.classList.remove('is-playing');
+    updatePlayButton();
+
+    setTimeout(() => {
+      if (!playing) {
+        $$('.playhead-group', els.fxLayer).forEach(n => n.remove());
+      }
+    }, 350);
+  }
+
+  function stopPlayback() {
+    finishPlayback();
+  }
+
+  /* ================= 弹窗 ================= */
+  function renderModalMeta() {
+    if (!currentId) return;
+    const ins = BY_ID[currentId];
+    els.mTitle.textContent = ins.name;
+    els.mEn.textContent = ins.en;
+    els.mDesc.textContent = ins.desc;
+    els.mIcon.innerHTML = iconMarkup(currentId, 'modal-icon');
+    els.modal.style.setProperty('--accent', ins.accent);
+    els.modal.style.setProperty('--tint', ins.tint);
+    renderModalActions();
+  }
+
+  function renderModalActions() {
+    if (!currentId) return;
+    const inGroup = state.assignments[state.group].includes(currentId);
+    els.mAddText.textContent = inGroup ? '已在当前组别' : '加入当前组别';
+    els.mAdd.disabled = inGroup;
+    els.mAdd.style.opacity = inGroup ? '.5' : '';
+    els.mAdd.style.cursor = inGroup ? 'default' : '';
+  }
+
+  function renderModalMedia() {
+    if (!currentId) return;
+    const ins = BY_ID[currentId];
+    const custom = assets[currentId].video;
+    const src = custom ? custom.url : ins.video;
+    const poster = custom ? '' : ins.poster;
+    els.mediaError.classList.remove('show');
+    els.mVideo.pause();
+    els.mVideo.src = src;
+    if (poster) els.mVideo.setAttribute('poster', poster);
+    else els.mVideo.removeAttribute('poster');
+    els.mVideo.muted = true;
+    els.mVideo.load();
+    els.mVideo.play().catch(() => {});
+    els.mediaBadge.textContent = custom ? '自定义演示视频' : '内置演示视频';
+    els.soundToggle.setAttribute('aria-pressed', 'false');
+    els.soundToggle.title = '开启视频声音';
+  }
+
+  function assetPreviewBtn(spec, label) {
+    return '<button class="ar-btn icon play" type="button" data-preview="' + spec + '" title="试听' + label + '" aria-label="试听' + label + '">' +
+      '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.53.85l10-6.5a1 1 0 0 0 0-1.7l-10-6.5A1 1 0 0 0 8 5.5Z"/></svg>' +
+    '</button>';
+  }
+
+  function assetRowMarkup(o) {
+    const custom = o.custom;
+    const frozen = gh.isFrozen();
+    const thumb = o.type === 'icon' ? '<span class="ar-thumb">' + iconMarkup(currentId, 'ar-svg') + '</span>' : '';
+    const dot = o.dot ? '<i class="grp-dot" style="background:' + o.dot + '"></i>' : '';
+    return '<div class="asset-row' + (o.dot ? ' fx' : '') + '">' + thumb +
+      '<div class="ar-label"><strong>' + dot + o.label + '</strong><small>' +
+        (custom ? (custom.name || '已上传文件') : o.note) +
+      '</small></div>' +
+      '<span class="ar-status ' + (custom ? 'custom' : '') + '">' + (custom ? '自定义' : (o.dot ? '内置合成' : '内置')) + '</span>' +
+      (o.preview || '') +
+      '<button class="ar-btn" type="button" data-upload="' + o.spec + '" ' + (frozen ? 'disabled' : '') + (frozen ? ' title="存档已冻结，只读"' : '') + '>上传</button>' +
+      '<button class="ar-btn icon" type="button" data-reset="' + o.spec + '" title="恢复默认" aria-label="恢复默认' + o.label + '" ' + (custom && !frozen ? '' : 'disabled') + '>↺</button>' +
+    '</div>';
+  }
+
+  function renderModalAssets() {
+    if (!currentId) return;
+    const id = currentId;
+    const base = [
+      { spec: 'icon', type: 'icon', label: '图标', note: ASSET_NOTE.icon, custom: assets[id].icon },
+      { spec: 'video', type: 'video', label: '演示视频', note: ASSET_NOTE.video, custom: assets[id].video },
+      { spec: 'timbre', type: 'timbre', label: '音色音频', note: ASSET_NOTE.timbre, custom: assets[id].timbre, preview: assetPreviewBtn('timbre', '音色音频') }
+    ].map(assetRowMarkup).join('');
+    const fx = GROUP_KEYS.map(g => {
+      const spec = 'effect:' + g;
+      const label = GROUPS[g].label + '组效果';
+      return assetRowMarkup({
+        spec,
+        type: 'effect',
+        label,
+        dot: GROUPS[g].swatch,
+        note: '导入该颜色区间的演奏音频',
+        custom: assets[id].effects[g],
+        preview: assetPreviewBtn(spec, label)
+      });
+    }).join('');
+    els.mAssets.innerHTML = base +
+      '<div class="asset-subhead"><strong>' + GROUP_KEYS.length + ' 色效果音频</strong><span>同一乐器在每个颜色组别可分别导入</span></div>' +
+      fx;
+  }
+
+  function openModal(id) {
+    if (!BY_ID[id]) return;
+    if (playing) stopPlayback();
+    pendingUpload = null;
+    currentId = id;
+    lastFocus = document.activeElement;
+    renderModalMeta();
+    renderModalAssets();
+    els.overlay.hidden = false;
+    requestAnimationFrame(() => els.overlay.classList.add('open'));
+    document.body.classList.add('modal-open');
+    renderModalMedia();
+    els.mClose.focus({ preventScroll: true });
+    clearTimeout(demoTimer);
+    demoTimer = setTimeout(() => {
+      if (currentId === id) playTimbrePreview(id);
+    }, 360);
+  }
+
+  function closeModal() {
+    if (!currentId) return;
+    clearTimeout(demoTimer);
+    stopPreviewAudio();
+    els.mVideo.pause();
+    els.mVideo.removeAttribute('src');
+    els.mVideo.load();
+    els.overlay.classList.remove('open');
+    document.body.classList.remove('modal-open');
+    currentId = null;
+    setTimeout(() => {
+      if (!currentId) els.overlay.hidden = true;
+    }, 240);
+    if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus({ preventScroll: true });
+  }
+
+  /* ================= 上传与资源 ================= */
+  function validFile(file, type) {
+    const mime = (file.type || '').toLowerCase();
+    const name = (file.name || '').toLowerCase();
+    if (type === 'icon') return mime.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg)$/.test(name);
+    if (type === 'video') return mime.startsWith('video/') || /\.(mp4|webm|mov|m4v|ogv)$/.test(name);
+    return mime.startsWith('audio/') || /\.(mp3|wav|m4a|aac|ogg|oga|flac)$/.test(name);
+  }
+
+  function parseSpec(spec) {
+    const parts = String(spec).split(':');
+    return { type: parts[0], group: GROUP_KEYS.includes(parts[1]) ? parts[1] : null };
+  }
+
+  function specLabel(type, group) {
+    if (type === 'effect' && group) return GROUPS[group].label + '组效果音频';
+    return ASSET_LABEL[type] || '资源';
+  }
+
+  function pickUpload(spec) {
+    if (!currentId) return;
+    if (gh.isFrozen()) { toast('存档已冻结，只读模式下不能上传'); return; }
+    const { type } = parseSpec(spec);
+    pendingUpload = { id: currentId, spec, type };
+    els.fileInput.accept = ASSET_ACCEPT[type] || 'audio/*';
+    els.fileInput.value = '';
+    els.fileInput.click();
+  }
+
+  async function handleFile(file) {
+    if (!pendingUpload) return;
+    const { id, spec, type } = pendingUpload;
+    pendingUpload = null;
+    if (!file) return;
+    if (!validFile(file, type)) {
+      toast('文件格式不对，请重新选择');
+      return;
+    }
+    if (file.size > ASSET_LIMIT[type]) {
+      toast('文件太大，请压缩后再上传');
+      return;
+    }
+    const { group } = parseSpec(spec);
+    const key = type === 'effect' ? effectKey(id, group) : id + ':' + type;
+    try {
+      await idbPut(key, { blob: file, name: file.name });
+    } catch (e) {
+      toast('保存失败，可能是浏览器存储空间不足');
+      return;
+    }
+    const slot = type === 'effect' ? assets[id].effects[group] : assets[id][type];
+    if (slot) URL.revokeObjectURL(slot.url);
+    const asset = { url: URL.createObjectURL(file), name: file.name || '', blob: file };
+    if (type === 'effect') assets[id].effects[group] = asset;
+    else assets[id][type] = asset;
+    if (type === 'timbre' || type === 'effect') {
+      await probeDuration(asset.url, key);
+    }
+    renderAll();
+    if (type === 'video' && currentId === id) renderModalMedia();
+    toast(specLabel(type, group) + '已更新');
+  }
+
+  async function resetAsset(id, spec, silent) {
+    const { type, group } = parseSpec(spec);
+    const slot = type === 'effect' ? assets[id].effects[group] : assets[id][type];
+    if (!slot) return;
+    const key = type === 'effect' ? effectKey(id, group) : id + ':' + type;
+    try { await idbDel(key); } catch (e) {}
+    URL.revokeObjectURL(slot.url);
+    if (type === 'effect') assets[id].effects[group] = null;
+    else assets[id][type] = null;
+    durationCache.delete(key);
+    renderAll();
+    if (type === 'video' && currentId === id) renderModalMedia();
+    if (!silent) toast(specLabel(type, group) + '已恢复内置');
+  }
+
+  async function resetInstrument(id) {
+    for (const type of ['icon', 'video', 'timbre']) {
+      if (assets[id][type]) {
+        try { await idbDel(id + ':' + type); } catch (e) {}
+        URL.revokeObjectURL(assets[id][type].url);
+        assets[id][type] = null;
+        durationCache.delete(id + ':' + type);
+      }
+    }
+    for (const g of GROUP_KEYS) {
+      if (assets[id].effects[g]) {
+        try { await idbDel(effectKey(id, g)); } catch (e) {}
+        URL.revokeObjectURL(assets[id].effects[g].url);
+        assets[id].effects[g] = null;
+        durationCache.delete(effectKey(id, g));
+      }
+    }
+    renderAll();
+    if (currentId === id) renderModalMedia();
+    toast(BY_ID[id].name + ' 已恢复内置资源');
+  }
+
+  let resetArmed = 0;
+  async function resetEverything() {
+    const btn = els.resetAll;
+    if (!resetArmed) {
+      resetArmed = Date.now();
+      btn.textContent = '再次点击确认';
+      btn.classList.add('armed');
+      clearTimeout(resetTimer);
+      resetTimer = setTimeout(() => {
+        resetArmed = 0;
+        btn.textContent = '重置全部自定义';
+        btn.classList.remove('armed');
+      }, 3200);
+      return;
+    }
+    resetArmed = 0;
+    clearTimeout(resetTimer);
+    btn.textContent = '重置全部自定义';
+    btn.classList.remove('armed');
+    closeModal();
+    stopPlayback();
+    await idbClear();
+    INSTRUMENTS.forEach(ins => {
+      ['icon', 'video', 'timbre'].forEach(type => {
+        if (assets[ins.id][type]) {
+          URL.revokeObjectURL(assets[ins.id][type].url);
+          assets[ins.id][type] = null;
+        }
+      });
+      GROUP_KEYS.forEach(g => {
+        const a = assets[ins.id].effects[g];
+        if (a) {
+          URL.revokeObjectURL(a.url);
+          assets[ins.id].effects[g] = null;
+        }
+      });
+    });
+    durationCache.clear();
+    state = clone(DEFAULT_STATE);
+    saveState();
+    renderAll();
+    toast('所有自定义内容已清空');
+  }
+
+  /* ================= 提示 ================= */
+  let toastTimer = 0;
+  function toast(msg, ms) {
+    clearTimeout(toastTimer);
+    els.toast.textContent = msg;
+    els.toast.classList.add('show');
+    toastTimer = setTimeout(() => els.toast.classList.remove('show'), ms || 2200);
+  }
+
+  /* ================= 横屏 ================= */
+  async function enterLandscape() {
+    try {
+      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch (e) {}
+    let locked = false;
+    try {
+      if (screen.orientation && typeof screen.orientation.lock === 'function') {
+        await screen.orientation.lock('landscape');
+        locked = true;
+      }
+    } catch (e) {}
+    if (locked) toast('已切换为横屏');
+    else if (window.matchMedia('(orientation: portrait)').matches) toast('请把设备旋转成横屏');
+    else toast('已进入全屏');
+  }
+
+  /* ================= 事件绑定 ================= */
+  function bindEvents() {
+    gh.bind();
+
+    // 组别切换
+    els.groupBox.addEventListener('click', e => {
+      const btn = e.target.closest('.swatch');
+      if (!btn) return;
+      setGroup(btn.dataset.group);
+    });
+
+    // 点击色块切换组别
+    els.score.addEventListener('click', e => {
+      if (playing) return;
+      const band = e.target.closest('.band');
+      if (!band) return;
+      setGroup(band.dataset.group);
+    });
+
+    // 乐器卡片：点击打开、+ 加入、拖拽
+    els.instrumentList.addEventListener('click', e => {
+      const addBtn = e.target.closest('.ins-add');
+      if (addBtn) {
+        e.stopPropagation();
+        addToGroup(addBtn.dataset.add);
+        return;
+      }
+      const card = e.target.closest('.ins-card');
+      if (card) openModal(card.dataset.id);
+    });
+    els.instrumentList.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      if (e.target.closest('.ins-add')) return;
+      const card = e.target.closest('.ins-card');
+      if (!card) return;
+      e.preventDefault();
+      openModal(card.dataset.id);
+    });
+    els.instrumentList.addEventListener('dragstart', e => {
+      const card = e.target.closest('.ins-card');
+      if (!card) return;
+      e.dataTransfer.setData('text/plain', card.dataset.id);
+      e.dataTransfer.effectAllowed = 'copy';
+      card.classList.add('dragging');
+    });
+    els.instrumentList.addEventListener('dragend', e => {
+      const card = e.target.closest('.ins-card');
+      if (card) card.classList.remove('dragging');
+      els.dropBox.classList.remove('over');
+    });
+
+    // 拖放到小框
+    els.dropBox.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      els.dropBox.classList.add('over');
+    });
+    els.dropBox.addEventListener('dragleave', e => {
+      if (!els.dropBox.contains(e.relatedTarget)) els.dropBox.classList.remove('over');
+    });
+    els.dropBox.addEventListener('drop', e => {
+      e.preventDefault();
+      els.dropBox.classList.remove('over');
+      const id = e.dataTransfer.getData('text/plain');
+      if (BY_ID[id]) addToGroup(id);
+    });
+
+    // 移除 chip / 点击 chip
+    els.dropChips.addEventListener('click', e => {
+      const rm = e.target.closest('[data-remove]');
+      if (rm) {
+        e.stopPropagation();
+        removeFromGroup(rm.dataset.remove);
+        return;
+      }
+      const chip = e.target.closest('.chip');
+      if (chip) openModal(chip.dataset.id);
+    });
+
+    // 播放
+    els.playBtn.addEventListener('click', () => {
+      if (playing) stopPlayback();
+      else startPlayback();
+    });
+
+    // 弹窗
+    els.mClose.addEventListener('click', closeModal);
+    els.overlay.addEventListener('mousedown', e => {
+      if (e.target === els.overlay) closeModal();
+    });
+    els.mTimbre.addEventListener('click', () => {
+      if (currentId) playTimbrePreview(currentId);
+    });
+    els.mAdd.addEventListener('click', () => {
+      if (currentId) addToGroup(currentId);
+    });
+    els.mReset.addEventListener('click', () => {
+      if (currentId) resetInstrument(currentId);
+    });
+    els.mAssets.addEventListener('click', e => {
+      const upload = e.target.closest('[data-upload]');
+      if (upload) { pickUpload(upload.dataset.upload); return; }
+      const reset = e.target.closest('[data-reset]');
+      if (reset && !reset.disabled) { resetAsset(currentId, reset.dataset.reset); return; }
+      const preview = e.target.closest('[data-preview]');
+      if (preview) {
+        const { type, group } = parseSpec(preview.dataset.preview);
+        if (type === 'timbre') playTimbrePreview(currentId);
+        else playEffectPreview(currentId, group);
+      }
+    });
+    els.soundToggle.addEventListener('click', () => {
+      const muted = !els.mVideo.muted;
+      els.mVideo.muted = muted;
+      if (!muted) els.mVideo.volume = 0.9;
+      els.soundToggle.setAttribute('aria-pressed', String(!muted));
+      els.soundToggle.title = muted ? '关闭视频声音' : '开启视频声音';
+    });
+    els.mVideo.addEventListener('error', () => {
+      if (els.mVideo.getAttribute('src')) els.mediaError.classList.add('show');
+    });
+    els.mVideo.addEventListener('loadeddata', () => els.mediaError.classList.remove('show'));
+
+    // 文件上传
+    els.fileInput.addEventListener('change', () => {
+      const file = els.fileInput.files && els.fileInput.files[0];
+      handleFile(file);
+    });
+
+    // 重置
+    els.resetAll.addEventListener('click', resetEverything);
+
+    // 横屏
+    els.screenBtn.addEventListener('click', enterLandscape);
+
+    // 键盘
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        if (currentId) closeModal();
+        else if (playing) stopPlayback();
+      }
+    });
+  }
+
+  /* ================= GitHub 跨设备同步 ================= */
+  const gh = (() => {
+    let config = null;   // { user, repo, branch, path, token, autoPull }
+    let state = { head: '', frozen: false, syncedAt: 0 };
+
+    function loadConfig() {
+      try { config = JSON.parse(localStorage.getItem(GH_CONFIG_KEY)) || null; }
+      catch { config = null; }
+      if (config && typeof config !== 'object') config = null;
+      if (config) {
+        if (typeof config.token !== 'string') config.token = '';
+        if (typeof config.user !== 'string') config.user = '';
+        if (typeof config.repo !== 'string') config.repo = '';
+        if (typeof config.branch !== 'string' || !config.branch) config.branch = 'main';
+        if (typeof config.path !== 'string' || !config.path) config.path = 'assets';
+      }
+      try { Object.assign(state, JSON.parse(localStorage.getItem(GH_STATE_KEY)) || {}); }
+      catch {}
+      state.frozen = !!state.frozen;
+    }
+    function saveConfig(c) {
+      config = c;
+      // 强制 token 为字符串，避免污染 localStorage 后下次崩溃
+      if (config && typeof config.token !== 'string') config.token = '';
+      try {
+        if (c) localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(c));
+        else localStorage.removeItem(GH_CONFIG_KEY);
+      } catch { /* 隐私模式下 localStorage 可能拒绝写入 */ }
+      if (c && c.autoPull) els.ghAutoPull.checked = true; else if (c) els.ghAutoPull.checked = false;
+      renderConfig();
+    }
+    function saveState() { localStorage.setItem(GH_STATE_KEY, JSON.stringify(state)); }
+
+    async function api(method, path, body) {
+      if (!config || !config.token) throw new Error('未配置 GitHub Token');
+      const opts = {
+        method,
+        headers: {
+          'Authorization': 'Bearer ' + config.token,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+          'User-Agent': 'rhythm-studio'
+        }
+      };
+      if (body !== undefined) {
+        opts.headers['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(body);
+      }
+      const r = await fetch(GH_API + path, opts);
+      if (!r.ok) {
+        const txt = await r.text().catch(() => '');
+        let msg;
+        try { msg = (JSON.parse(txt) || {}).message; } catch { msg = null; }
+        throw new Error('GitHub API ' + r.status + ': ' + (msg || txt.slice(0, 120)));
+      }
+      return r.json().catch(() => ({}));
+    }
+
+    async function raw(path, opts) {
+      const r = await fetch(GH_RAW + '/' + path, Object.assign({ cache: 'no-store' }, opts || {}));
+      if (!r.ok) throw new Error('远端文件 ' + path + ' 加载失败 (' + r.status + ')');
+      return r;
+    }
+
+    function b64encode(buf) {
+      // ArrayBuffer / Uint8Array → base64 (GitHub API 要求)
+      const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+      let bin = '';
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+      return btoa(bin);
+    }
+
+    async function fileToBlobInfo(file) {
+      if (file instanceof Blob) {
+        const buf = await file.arrayBuffer();
+        return { content: b64encode(buf), encoding: 'base64', mimeType: file.type || 'application/octet-stream' };
+      }
+      return null;
+    }
+
+    /* --------- 列出 IndexedDB 所有自定义资产 --------- */
+    async function collectLocalAssets() {
+      const rows = await idbLoadAll();
+      const out = [];
+      for (const row of rows) {
+        const parts = String(row.key).split(':');
+        const id = parts[0];
+        const type = parts[1];
+        if (!BY_ID[id] || !row.val || !row.val.blob) continue;
+        let spec, group;
+        if (type === 'effect') { spec = 'effect'; group = parts[2]; }
+        else if (type === 'icon' || type === 'video' || type === 'timbre') { spec = type; group = null; }
+        else continue;
+        // 路径：assets/{id}/icon.svg 或 assets/{id}/video.mp4 或 assets/{id}/timbre.mp3 或 assets/{id}/effect-green.mp3
+        const ext = guessExt(row.val.name, row.val.blob.type || row.val.mimeType || 'application/octet-stream', spec);
+        const fname = spec === 'effect' ? ('effect-' + group + ext) : (spec + ext);
+        out.push({
+          key: row.key,                     // 'shaker:icon' / 'drum:effect:red'
+          id, spec, group,
+          blob: row.val.blob,
+          name: row.val.name || '',
+          mimeType: row.val.blob.type || row.val.mimeType || 'application/octet-stream',
+          path: config.path + '/' + id + '/' + fname
+        });
+      }
+      return out;
+    }
+    function guessExt(name, mime, spec) {
+      if (name) { const m = name.match(/\.([a-z0-9]+)$/i); if (m) return '.' + m[1].toLowerCase(); }
+      const map = {
+        icon:   'svg+xml',
+        video:  'mp4',
+        timbre: 'mp3',
+        effect: 'mp3'
+      };
+      if (mime.includes('jpeg') || mime.includes('jpg')) return '.jpg';
+      if (mime.includes('png')) return '.png';
+      if (mime.includes('gif')) return '.gif';
+      if (mime.includes('webp')) return '.webp';
+      if (mime.includes('svg')) return '.svg';
+      if (mime.includes('mp4') || mime.includes('video')) return '.mp4';
+      if (mime.includes('mp3') || mime.includes('audio')) return '.mp3';
+      if (mime.includes('wav')) return '.wav';
+      if (mime.includes('ogg')) return '.ogg';
+      return '.' + (map[spec] || 'bin');
+    }
+
+    /* --------- 核心：Git Blob → Tree → Commit → Ref --------- */
+    async function doSync() {
+      if (!config) throw new Error('请先配置 GitHub');
+      if (state.frozen) throw new Error('存档已冻结，无法同步（请先清除配置）');
+
+      const phase = { label: '准备' };
+      const wrap = async (label, fn) => { try { phase.label = label; return await fn(); } catch (e) { e.message = '[' + label + '] ' + (e.message || e); throw e; } };
+
+      try {
+        // --- Phase 1: 收集本地资产 ---
+        phase.label = '收集本地资产';
+        const assets = await collectLocalAssets();
+        const index = {
+          version: 1, frozen: false, exportedAt: Date.now(),
+          index: assets.map(a => ({ path: a.path, key: a.key, id: a.id, spec: a.spec, group: a.group || null, mimeType: a.mimeType, size: a.blob.size }))
+        };
+        const indexBytes = new TextEncoder().encode(JSON.stringify(index, null, 2));
+        updateStatus('syncing', '正在同步 (' + assets.length + ' 项)...');
+
+        let headSha = null, keepEntries = [], keepBlobs = [], isFirstSync = false;
+
+        // --- Phase 2: 探测远端仓库 ---
+        try {
+          await wrap('读取远端分支 (GET refs)', async () => {
+            const ref = await api('GET', '/repos/' + config.user + '/' + config.repo + '/git/refs/heads/' + encodeURIComponent(config.branch));
+            headSha = ref.object.sha;
+          });
+          // 有 head → 读取 base commit & tree
+          await wrap('读取远端 base commit', async () => {
+            const headCommit = await api('GET', '/repos/' + config.user + '/' + config.repo + '/git/commits/' + headSha);
+            const baseTreeSha = headCommit.tree.sha;
+            const rootTree = await api('GET', '/repos/' + config.user + '/' + config.repo + '/git/trees/' + baseTreeSha + '?recursive=1');
+            const baseEntries = (rootTree.tree || []);
+            keepEntries = baseEntries.filter(e => !e.path.startsWith(config.path + '/') && e.type === 'tree');
+            keepBlobs  = baseEntries.filter(e => !e.path.startsWith(config.path + '/') && e.type === 'blob');
+          });
+        } catch (e) {
+          const msg = String(e.message || '');
+          // 409 "Git Repository is empty" / 404 → 视为首次同步（空仓库或分支不存在）
+          if (msg.includes('409') || msg.toLowerCase().includes('empty') || msg.includes('404')) {
+            isFirstSync = true; headSha = null; keepEntries = []; keepBlobs = [];
+          } else {
+            throw e;
+          }
+        }
+
+        // ============ 首次同步（空仓库）→ Contents API ============
+        // Git Data API 在空仓库会整体 409，改用 Contents API 逐文件上传
+        // Contents API 能自动创建初始 commit + 分支
+        if (isFirstSync) {
+          const commitMsg = 'rhythm-studio 首次上传 (' + assets.length + ' assets) @ ' + new Date().toISOString();
+          const contentsBase = '/repos/' + config.user + '/' + config.repo + '/contents/';
+          let lastCommitSha = null;
+
+          // 先上传 index.json — Contents API 会自动初始化分支
+          await wrap('首次上传 index.json', async () => {
+            const r = await api('PUT', contentsBase + encodeURIComponent(config.path + '/index.json'), {
+              message: commitMsg + ' — index',
+              content: b64encode(indexBytes),
+              branch: config.branch
+            });
+            if (r && r.commit && r.commit.sha) lastCommitSha = r.commit.sha;
+          });
+
+          // 再上传每个资产（每个也会产生一个 commit）
+          for (let i = 0; i < assets.length; i++) {
+            const a = assets[i];
+            updateStatus('syncing', '首次上传 (' + (i + 1) + '/' + assets.length + '): ' + a.path);
+            await wrap('首次上传 ' + a.path, async () => {
+              const buf = await a.blob.arrayBuffer();
+              const r = await api('PUT', contentsBase + encodeURIComponent(a.path), {
+                message: commitMsg + ' — ' + a.key,
+                content: b64encode(buf),
+                branch: config.branch
+              });
+              if (r && r.commit && r.commit.sha) lastCommitSha = r.commit.sha;
+            });
+          }
+
+          state.head = lastCommitSha || '';
+          state.syncedAt = Date.now();
+          state.frozen = false;
+          saveState(); renderConfig();
+          updateStatus('configured', '首次同步完成 v' + (lastCommitSha ? lastCommitSha.slice(0, 7) : ''));
+          toast('云端同步成功（' + assets.length + ' 项）— 首次上传，之后更新会自动合并为单个 commit');
+          return;
+        }
+
+        // ============ 增量同步（Git Data API） ============
+        const newEntries = [];
+        await wrap('上传 index.json blob', async () => {
+          const b = await api('POST', '/repos/' + config.user + '/' + config.repo + '/git/blobs', { content: b64encode(indexBytes), encoding: 'base64' });
+          newEntries.push({ path: config.path + '/index.json', mode: '100644', type: 'blob', sha: b.sha });
+        });
+
+        for (let i = 0; i < assets.length; i++) {
+          const a = assets[i];
+          updateStatus('syncing', '上传 blob (' + (i + 1) + '/' + assets.length + '): ' + a.path);
+          await wrap('上传 blob ' + a.path, async () => {
+            const buf = await a.blob.arrayBuffer();
+            const b = await api('POST', '/repos/' + config.user + '/' + config.repo + '/git/blobs', { content: b64encode(buf), encoding: 'base64' });
+            newEntries.push({ path: a.path, mode: '100644', type: 'blob', sha: b.sha });
+          });
+        }
+
+        const treeBody = keepEntries.concat([], keepBlobs, newEntries).map(e => ({
+          path: e.path, mode: e.mode || '100644', type: e.type, sha: e.sha
+        }));
+        const newTree = await wrap('创建 Git tree', () => api('POST', '/repos/' + config.user + '/' + config.repo + '/git/trees', { tree: treeBody }));
+
+        const commitBody = { message: 'rhythm-studio: ' + assets.length + ' assets @ ' + new Date().toISOString(), tree: newTree.sha, parents: [headSha] };
+        const commit = await wrap('创建 Git commit', () => api('POST', '/repos/' + config.user + '/' + config.repo + '/git/commits', commitBody));
+
+        const refUrl = '/repos/' + config.user + '/' + config.repo + '/git/refs/heads/' + encodeURIComponent(config.branch);
+        await wrap('更新远端分支 (PATCH ref)', () => api('PATCH', refUrl, { sha: commit.sha }));
+
+        state.head = commit.sha; state.syncedAt = Date.now(); state.frozen = false;
+        saveState(); renderConfig();
+        updateStatus('configured', '已同步到 v' + commit.sha.slice(0, 7));
+        toast('云端同步成功（' + assets.length + ' 项）');
+      } catch (e) {
+        console.error('doSync 失败 [phase=' + phase.label + ']:', e);
+        throw e;
+      }
+    }
+
+    async function doFreeze() {
+      if (!config) throw new Error('请先配置 GitHub');
+      // 拉当前 index.json，改 frozen:true，重新写回去
+      const r = await raw(config.user + '/' + config.repo + '/' + config.branch + '/' + config.path + '/index.json').catch(() => null);
+      const index = r ? await r.json() : { version: 1, index: [] };
+      index.frozen = true;
+      await api('POST', '/repos/' + config.user + '/' + config.repo + '/git/blobs', { content: b64encode(new TextEncoder().encode(JSON.stringify(index, null, 2))), encoding: 'base64' });
+      // 简化：直接走 doSync 流程但 index.json 写 frozen:true —— 改 doSync 的 index 生成
+      // 这里直接复用：改 state.frozen 然后调用 doSync 会用 false，所以单独写
+      updateStatus('syncing', '正在冻结存档...');
+      const assets = await collectLocalAssets();
+      const idx = { version: 1, frozen: true, exportedAt: Date.now(), index: assets.map(a => ({ path: a.path, key: a.key, id: a.id, spec: a.spec, group: a.group || null, mimeType: a.mimeType, size: a.blob.size })) };
+      const idxBlob = await api('POST', '/repos/' + config.user + '/' + config.repo + '/git/blobs', { content: b64encode(new TextEncoder().encode(JSON.stringify(idx, null, 2))), encoding: 'base64' });
+      // 用 Contents API 写 index.json（小文件刚好）— 但要处理 404 首次
+      try {
+        await api('PUT', '/repos/' + config.user + '/' + config.repo + '/contents/' + config.path + '/index.json', {
+          message: 'rhythm-studio: freeze archive',
+          content: b64encode(new TextEncoder().encode(JSON.stringify(idx, null, 2)))
+        });
+      } catch {
+        await api('POST', '/repos/' + config.user + '/' + config.repo + '/git/blobs', { content: b64encode(new TextEncoder().encode(JSON.stringify(idx, null, 2))), encoding: 'base64' });
+      }
+      state.frozen = true;
+      saveState();
+      renderConfig();
+      updateStatus('frozen', '存档已冻结 · 只读');
+      toast('存档已冻结，其他设备只可读');
+    }
+
+    /* --------- 从云端拉取 --------- */
+    async function doPull() {
+      if (!config) throw new Error('未配置');
+      updateStatus('syncing', '正在从云端拉取...');
+      let index;
+      try {
+        const r = await raw(config.user + '/' + config.repo + '/' + config.branch + '/' + config.path + '/index.json');
+        index = await r.json();
+      } catch (e) {
+        updateStatus('error', '云端没有 index.json（' + (e.message || e) + '）');
+        throw e;
+      }
+      if (!index || !Array.isArray(index.index) || index.index.length === 0) {
+        updateStatus('configured', '云端存档为空');
+        toast('云端存档为空，没有可拉取的内容');
+        return 0;
+      }
+
+      // 先记 frozen 状态
+      const wasFrozen = state.frozen;
+      state.frozen = !!index.frozen;
+      if (state.frozen) saveState();
+
+      // 清理本地旧的远端资产？不，合并：远端有 → 覆盖本地；远端没有 → 保留本地
+      let loaded = 0;
+      for (const entry of index.index) {
+        try {
+          const r = await raw(config.user + '/' + config.repo + '/' + config.branch + '/' + entry.path);
+          const blob = await r.blob();
+          const info = { blob, name: entry.path.split('/').pop(), mimeType: entry.mimeType || blob.type };
+          await idbPut(entry.key, info);
+          loaded++;
+        } catch (e) {
+          // 单个文件失败不中断整体
+          console.warn('拉取资产失败', entry.path, e);
+        }
+      }
+
+      state.syncedAt = Date.now();
+      saveState();
+      renderConfig();
+
+      // 重新装载 assets 引用到内存
+      await loadSavedAssets();
+
+      if (state.frozen) {
+        updateStatus('frozen', '已拉取 ' + loaded + ' 项 · 存档已冻结只读');
+        toast('已拉取 ' + loaded + ' 项 · 远端存档已冻结');
+      } else {
+        updateStatus('configured', '已拉取 ' + loaded + ' 项');
+        toast('已从云端拉取 ' + loaded + ' 项自定义');
+      }
+
+      // 如果从 frozen 解锁（index.json 里 frozen 变 false），也更新
+      if (wasFrozen && !state.frozen) renderConfig();
+
+      return loaded;
+    }
+
+    async function doTest() {
+      if (!config) throw new Error('请先填写配置');
+      updateStatus('syncing', '正在测试连接...');
+      try {
+        // 轻量：GET /user 验证 token 是否有效；再 GET /repos/{u}/{r} 验证 repo 存在
+        const me = await api('GET', '/user');
+        const repo = await api('GET', '/repos/' + config.user + '/' + config.repo);
+        updateStatus('configured', '连接成功：' + me.login + ' → ' + repo.full_name);
+        toast('GitHub 连接成功 ✓');
+      } catch (e) {
+        updateStatus('error', '连接失败：' + (e.message || e));
+        throw e;
+      }
+    }
+
+    /* --------- UI 更新 --------- */
+    function updateStatus(cls, msg) {
+      els.ghStatus.textContent = msg || '';
+      els.ghStatus.className = 'gh-status';
+      if (cls) els.ghStatus.classList.add(cls);
+    }
+    function renderConfig() {
+      // 面板状态
+      els.ghMeta.hidden = !config;
+      els.ghFrozenBanner.hidden = !state.frozen;
+      els.ghFrozenActions.hidden = !config || state.frozen;
+      els.ghFreeze.disabled = state.frozen;
+
+      if (!config) {
+        updateStatus('', '未配置');
+        els.ghDesc.textContent = '连接 GitHub 仓库，把自定义内容存到云端。保存后，任何设备打开同一网址都能看到同一套乐器。';
+        els.ghSync.disabled = true;
+        els.ghRefresh.disabled = true;
+        els.ghTestConn.disabled = false;
+        els.resetAll.disabled = false;
+        els.resetAll.title = '';
+        els.resetAll.style.opacity = '';
+        return;
+      }
+
+      els.ghSync.disabled = false;
+      els.ghRefresh.disabled = false;
+
+      if (state.frozen) {
+        updateStatus('frozen', '存档已冻结');
+        els.ghDesc.textContent = '远端存档已冻结，当前设备为只读。如需覆盖，请在创建该存档的设备上解冻（清除配置后从云端拉取再重新配置同步）。';
+      } else {
+        els.ghDesc.textContent = '配置已保存到本机浏览器。当前 Token 只在这台设备可用，其他设备访问同一网址时自动从公开仓库拉取。';
+      }
+
+      els.ghRemotePath.textContent = 'github.com/' + config.user + '/' + config.repo + '/blob/' + config.branch + '/' + config.path;
+      els.ghHead.textContent = state.head ? state.head.slice(0, 7) : '-';
+      els.ghSyncedAt.textContent = state.syncedAt ? new Date(state.syncedAt).toLocaleString() : '从未';
+
+      // 加载配置到输入框
+      els.ghUser.value = config.user || '';
+      els.ghRepo.value = config.repo || '';
+      els.ghBranch.value = config.branch || 'main';
+      els.ghPath.value = config.path || 'assets';
+      els.ghToken.value = config.token ? maskToken(config.token) : '';
+      els.ghAutoPull.checked = !!config.autoPull;
+
+      // frozen 时所有本地上传/重置操作禁用
+      els.resetAll.disabled = state.frozen;
+      els.resetAll.style.opacity = state.frozen ? '.45' : '';
+      els.resetAll.title = state.frozen ? '存档已冻结' : '';
+    }
+    function maskToken(t) {
+      if (typeof t !== 'string' || !t || t.length < 8) return '';
+      return t.slice(0, 4) + '•'.repeat(Math.max(4, t.length - 8)) + t.slice(-4);
+    }
+
+    /* --------- bootstrap --------- */
+    async function bootstrap() {
+      loadConfig();
+      renderConfig();
+      if (config && config.autoPull) {
+        try { await doPull(); }
+        catch { /* 首次可能没有 index.json */ }
+      }
+    }
+
+    /* --------- 事件绑定 --------- */
+    function bind() {
+      els.ghTokenToggle.addEventListener('click', () => {
+        const t = els.ghToken;
+        if (t.type === 'password') t.type = 'text'; else t.type = 'password';
+        els.ghTokenToggle.textContent = t.type === 'password' ? '👁' : '🙈';
+      });
+
+      els.ghSaveConfig.addEventListener('click', () => {
+        const user = els.ghUser.value.trim();
+        const repo = els.ghRepo.value.trim();
+        const branch = els.ghBranch.value.trim() || 'main';
+        const path = els.ghPath.value.trim() || 'assets';
+        const token = els.ghToken.value.trim();
+        // 含掩码符 '•' 说明是旧 token 的掩码显示，从 config 取回真实值；否则直接用用户输入
+        const realToken = token && !token.includes('•') ? token : (config && config.token || '');
+        if (!user || !repo) { toast('请填写用户名和仓库名'); return; }
+        saveConfig({ user, repo, branch, path, token: realToken, autoPull: els.ghAutoPull.checked });
+        toast('GitHub 配置已保存');
+      });
+
+      els.ghSync.addEventListener('click', async () => {
+        try { await doSync(); }
+        catch (e) {
+          const full = (e.message || String(e));
+          // 状态栏显示完整，toast 截断（避免屏幕溢出）
+          updateStatus('error', full);
+          toast('同步失败：' + full.slice(0, 120), 5000);
+          console.error('[ghSync]', e);
+        }
+      });
+
+      els.ghRefresh.addEventListener('click', async () => {
+        try { await doPull(); }
+        catch (e) {
+          const full = (e.message || String(e));
+          updateStatus('error', full);
+          toast('拉取失败：' + full.slice(0, 120), 5000);
+          console.error('[ghRefresh]', e);
+        }
+      });
+
+      els.ghTestConn.addEventListener('click', async () => {
+        const cfg = {
+          user: els.ghUser.value.trim(), repo: els.ghRepo.value.trim(),
+          branch: els.ghBranch.value.trim() || 'main', path: els.ghPath.value.trim() || 'assets',
+          token: els.ghToken.value.trim()
+        };
+        // 含掩码符 '•' 说明是旧 token 的掩码显示，从 config 取回真实值；否则直接用用户输入
+        const realToken = cfg.token && !cfg.token.includes('•') ? cfg.token : (config && config.token || '');
+        if (!cfg.user || !cfg.repo) { toast('请先填写用户名和仓库名'); return; }
+        if (!realToken) { toast('需要填写 Token 才能测试'); return; }
+        const old = config;
+        config = Object.assign(cfg, { token: realToken });
+        try { await doTest(); saveConfig(config); }
+        catch (e) { config = old; updateStatus('error', (e.message || e).slice(0, 60)); toast('连接失败：' + (e.message || e)); }
+      });
+
+      els.ghAutoPull.addEventListener('change', () => {
+        if (!config) return;
+        config.autoPull = els.ghAutoPull.checked;
+        localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(config));
+      });
+
+      els.ghLogout.addEventListener('click', () => {
+        localStorage.removeItem(GH_CONFIG_KEY);
+        localStorage.removeItem(GH_STATE_KEY);
+        config = null;
+        state = { head: '', frozen: false, syncedAt: 0 };
+        renderConfig();
+        toast('GitHub 配置已清除');
+      });
+
+      els.ghFreeze.addEventListener('click', async () => {
+        try { await doFreeze(); }
+        catch (e) { updateStatus('error', (e.message || e).slice(0, 60)); toast('冻结失败：' + (e.message || e)); }
+      });
+    }
+
+    return { bootstrap, bind, isFrozen: () => state.frozen, renderConfig, saveConfig };
+  })();
+
+  /* ================= 初始化 ================= */
+  function cacheEls() {
+    els.score = $('#score');
+    els.bands = $('#scoreBands');
+    els.fxLayer = $('#fxLayer');
+    els.dropBox = $('#dropBox');
+    els.dropChips = $('#dropChips');
+    els.dropHint = $('#dropHint');
+    els.groupBox = $('#groupBox');
+    els.playBtn = $('#playBtn');
+    els.playLabel = $('#playLabel');
+    els.captionDot = $('#captionDot');
+    els.captionNames = $('#captionNames');
+    els.instrumentList = $('#instrumentList');
+    els.countBadge = $('#countBadge');
+    els.resetAll = $('#resetAll');
+    els.screenBtn = $('#screenBtn');
+    els.overlay = $('#overlay');
+    els.modal = $('#modal');
+    els.mTitle = $('#mTitle');
+    els.mEn = $('#mEn');
+    els.mDesc = $('#mDesc');
+    els.mIcon = $('#mIcon');
+    els.mVideo = $('#mVideo');
+    els.mAssets = $('#mAssets');
+    els.mTimbre = $('#mTimbre');
+    els.mAdd = $('#mAdd');
+    els.mAddText = $('#mAddText');
+    els.mReset = $('#mReset');
+    els.mClose = $('#mClose');
+    els.mediaBadge = $('#mediaBadge');
+    els.mediaError = $('#mediaError');
+    els.soundToggle = $('#soundToggle');
+    els.fileInput = $('#fileInput');
+    els.toast = $('#toast');
+    // GitHub 同步面板
+    els.ghStatus = $('#ghStatus');
+    els.ghDesc = $('#ghDesc');
+    els.ghUser = $('#ghUser');
+    els.ghRepo = $('#ghRepo');
+    els.ghBranch = $('#ghBranch');
+    els.ghPath = $('#ghPath');
+    els.ghToken = $('#ghToken');
+    els.ghTokenToggle = $('#ghTokenToggle');
+    els.ghSaveConfig = $('#ghSaveConfig');
+    els.ghSync = $('#ghSync');
+    els.ghRefresh = $('#ghRefresh');
+    els.ghTestConn = $('#ghTestConn');
+    els.ghAutoPull = $('#ghAutoPull');
+    els.ghLogout = $('#ghLogout');
+    els.ghMeta = $('#ghMeta');
+    els.ghRemotePath = $('#ghRemotePath');
+    els.ghHead = $('#ghHead');
+    els.ghSyncedAt = $('#ghSyncedAt');
+    els.ghFrozenBanner = $('#ghFrozenBanner');
+    els.ghFrozenActions = $('#ghFrozenActions');
+    els.ghFreeze = $('#ghFreeze');
+    els.ghFields = $('#ghFields');
+  }
+
+  async function init() {
+    cacheEls();
+    buildScore();
+    renderCards();
+    renderDock();
+    bindEvents();
+
+    await loadSavedAssets();
+    await gh.bootstrap();
+    renderAll();
+    if (!storageOK) toast('当前环境无法本地保存，自定义只在本次打开有效');
+  }
+
+  init();
+})();
+
+</script>
+</body>
+</html>
