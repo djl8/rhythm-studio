@@ -2756,6 +2756,7 @@ body.is-playing .dock .drop-box{display:none}
 
     /* --------- bootstrap --------- */
     async function bootstrap() {
+      if (window.__rhythmDebug) window.__rhythmDebug.log("bootstrap-entered");
       loadConfig();
       renderConfig();
       // 1. 先从默认仓库静默自动拉取（零配置零 token，任何设备打开都能直接看到云端自定义）
