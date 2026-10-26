@@ -2359,9 +2359,21 @@ body.is-playing .dock .drop-box{display:none}
     }
 
     async function raw(path, opts) {
-      const r = await fetch(GH_RAW + '/' + path, Object.assign({ cache: 'no-store' }, opts || {}));
-      if (!r.ok) throw new Error('远端文件 ' + path + ' 加载失败 (' + r.status + ')');
-      return r;
+      opts = opts || {};
+      const timeout = opts.timeout != null ? opts.timeout : 10000;  // 默认 10s 超时，避免 Safari 卡死
+      let controller;
+      let timer;
+      if (timeout > 0) {
+        controller = new AbortController();
+        timer = setTimeout(() => controller.abort(), timeout);
+      }
+      try {
+        const r = await fetch(GH_RAW + '/' + path, Object.assign({ cache: 'no-store', signal: controller && controller.signal }, opts));
+        if (!r.ok) throw new Error('远端文件 ' + path + ' 加载失败 (' + r.status + ')');
+        return r;
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
     }
 
     function b64encode(buf) {
@@ -2619,19 +2631,36 @@ body.is-playing .dock .drop-box{display:none}
       state.frozen = !!index.frozen;
       if (state.frozen) saveState();
 
-      // 合并：远端有 → 覆盖本地；远端没有 → 保留本地
-      let loaded = 0;
-      for (const entry of index.index) {
+      // 并行下载所有文件（Promise.allSettled 不会被单个失败阻断）
+      // 加 20 秒总量超时 —— 超时就放弃剩余的，已经下载的照样能用
+      const TOTAL_TIMEOUT = 20000;
+      const work = index.index.map(entry => (async () => {
         try {
           const r = await raw(repo.user + '/' + repo.repo + '/' + repo.branch + '/' + entry.path);
           const blob = await r.blob();
           const info = { blob, name: entry.path.split('/').pop(), mimeType: entry.mimeType || blob.type };
           await idbPut(entry.key, info);
-          loaded++;
+          return true;
         } catch (e) {
-          console.warn('拉取资产失败', entry.path, e);
+          // 静默模式下不刷 console，减少干扰
+          if (!silent) console.warn('拉取资产失败', entry.path, e);
+          return false;
         }
+      })());
+
+      let results;
+      try {
+        results = await Promise.race([
+          Promise.allSettled(work),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('拉取超时 (' + TOTAL_TIMEOUT / 1000 + 's)')), TOTAL_TIMEOUT))
+        ]);
+      } catch (e) {
+        // 总量超时了 —— 不丢已经下载的，继续往下走
+        console.warn('autoPull 部分超时，已下载的仍然生效:', e.message);
+        results = await Promise.allSettled(work);  // 等剩余的慢慢跑完（不 await 也行，但等它们安静退出）
       }
+      let loaded = 0;
+      for (const r of results) { if (r.status === 'fulfilled' && r.value) loaded++; }
 
       state.syncedAt = Date.now();
       saveState();
