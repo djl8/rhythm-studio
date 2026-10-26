@@ -126,6 +126,42 @@ body.is-playing .dock .drop-box{display:none}
 .cap-names{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cap-hint{margin-left:auto;font-size:11.5px;color:var(--muted-2);white-space:nowrap}
 
+/* ---------- 五色合奏 ---------- */
+.ensemble{grid-column:1;margin-top:14px;padding:14px 16px 16px;background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow-card)}
+.ens-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:11px}
+.ens-head h2{margin:0;font-size:14.5px;letter-spacing:.02em}
+.ens-head p{margin:3px 0 0;font-size:11px;line-height:1.5;color:var(--muted)}
+.ens-hint{flex:0 0 auto;padding:4px 10px;border-radius:999px;background:#fff4d6;color:#8a6d1a;font-size:11px;font-weight:700;white-space:nowrap}
+.ens-hint.ready{background:#e7f0e4;color:#3f6b4f}
+.ens-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}
+.ens-slot{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 6px 7px;border:1px dashed rgba(31,43,36,.2);border-radius:14px;background:#fffdf7;cursor:pointer;transition:border-color .16s,background .16s,transform .16s}
+.ens-slot:hover{border-color:rgba(31,43,36,.34);transform:translateY(-1px)}
+.ens-slot.over{border-color:var(--group-accent);background:var(--group-soft);border-style:solid}
+.ens-slot.filled{border-style:solid;border-color:color-mix(in srgb,var(--swatch) 55%,rgba(31,43,36,.16));background:color-mix(in srgb,var(--swatch) 8%,#fffdf7)}
+.ens-slot.playing{border-color:var(--swatch);box-shadow:0 0 0 3px color-mix(in srgb,var(--swatch) 42%,transparent);transform:translateY(-1px)}
+.ens-slot:focus-visible{outline:2px solid color-mix(in srgb,var(--swatch) 70%,#1f2b24);outline-offset:2px}
+.ens-label{display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#5d665b;letter-spacing:.02em}
+.ens-label i{width:9px;height:9px;border-radius:3px;display:block}
+.ens-box{width:52px;height:52px;border-radius:13px;display:grid;place-items:center;background:var(--tint,#f5f3ec);border:1px solid rgba(31,43,36,.06)}
+.ens-box svg,.ens-box img{width:36px;height:36px;object-fit:contain}
+.ens-slot.empty .ens-box{background:#f7f5ee;border:1px dashed rgba(31,43,36,.18);color:#adb5a9;font-size:20px;font-weight:300}
+.ens-name{max-width:100%;font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ens-x{position:absolute;top:4px;right:4px;width:17px;height:17px;padding:0;border:0;border-radius:50%;background:rgba(31,43,36,.08);color:#6f786d;font-size:11px;line-height:1;display:grid;place-items:center;cursor:pointer}
+.ens-x:hover{background:#7d3a32;color:#fff}
+.ens-play{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:44px;margin-top:12px;border:0;border-radius:14px;background:var(--ink);color:#fffaf0;font-size:13.5px;font-weight:700;letter-spacing:.04em;cursor:pointer;transition:.18s;box-shadow:0 12px 24px -14px rgba(31,43,36,.8)}
+.ens-play:hover:not(:disabled){background:#111a15;transform:translateY(-1px)}
+.ens-play:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+.ens-play.is-stop{background:#8c4038}
+.ens-play svg{width:13px;height:13px}
+.ens-play .ic-stop{display:none}
+.ens-play.is-stop .ic-play{display:none}
+.ens-play.is-stop .ic-stop{display:block}
+.ens-picker{position:fixed;z-index:120;display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:10px;border-radius:16px;background:#fffdf7;border:1px solid var(--line-strong);box-shadow:var(--shadow-modal)}
+.ens-picker button{display:flex;flex-direction:column;align-items:center;gap:3px;width:58px;padding:6px 2px;border:1px solid var(--line);border-radius:11px;background:#fffefa;cursor:pointer;font-size:10px;color:var(--ink)}
+.ens-picker button:hover{border-color:var(--accent);transform:translateY(-1px)}
+.ens-picker .pk-icon{width:30px;height:30px;display:grid;place-items:center}
+.ens-picker .pk-icon svg,.ens-picker .pk-icon img{width:28px;height:28px;object-fit:contain}
+
 /* ---------- 右侧乐器栏 ---------- */
 .sidebar{position:sticky;top:18px;display:flex;flex-direction:column;gap:14px}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:18px 16px 14px;box-shadow:var(--shadow-card)}
@@ -364,6 +400,18 @@ body.is-playing .dock .drop-box{display:none}
 }
 @media (max-width:560px){
   .brand .sub{display:none}
+  .ensemble{padding:10px 10px 11px;border-radius:16px}
+  .ens-head p{display:none}
+  .ens-row{gap:5px}
+  .ens-slot{padding:6px 3px 5px;gap:4px;border-radius:11px}
+  .ens-label{font-size:9px;gap:3px}
+  .ens-label i{width:7px;height:7px}
+  .ens-box{width:28px;height:28px;border-radius:8px}
+  .ens-box svg,.ens-box img{width:21px;height:21px}
+  .ens-slot.empty .ens-box{font-size:15px}
+  .ens-name{display:none}
+  .ens-x{display:none}
+  .ens-play{height:38px;font-size:12.5px}
   .drop-hint span{display:none}
   .drop-box{min-width:84px}
   .chip{padding:1px 2px;gap:0}
@@ -414,6 +462,19 @@ body.is-playing .dock .drop-box{display:none}
   .ins-icon{width:34px;height:34px;border-radius:10px}
   .ins-icon svg,.ins-icon img{width:26px;height:26px}
   .ins-body p,.drag-tip,.panel-foot{display:none}
+  .ensemble{margin-top:8px;padding:9px 10px 10px;border-radius:14px}
+  .ens-head{margin-bottom:7px}
+  .ens-head h2{font-size:12.5px}
+  .ens-head p{display:none}
+  .ens-row{gap:6px}
+  .ens-slot{padding:5px 3px 4px;gap:3px;border-radius:11px}
+  .ens-label{font-size:9.5px;gap:4px}
+  .ens-label i{width:7px;height:7px}
+  .ens-box{width:36px;height:36px;border-radius:10px}
+  .ens-box svg,.ens-box img{width:26px;height:26px}
+  .ens-name{font-size:9px}
+  .ens-x{width:14px;height:14px;font-size:9px;top:2px;right:2px}
+  .ens-play{height:34px;margin-top:7px;font-size:12px;border-radius:11px}
   .modal{grid-template-columns:1.05fr .95fr;max-height:94vh;overflow:hidden}
   .modal-media{padding:14px;min-height:auto}
   .modal-info{max-height:94vh;padding:16px 18px}
@@ -588,7 +649,7 @@ body.is-playing .dock .drop-box{display:none}
           <button class="swatch" data-group="yellow" style="--c:#f0cf69;--check:#5c4a13" aria-label="黄色组" aria-pressed="false" title="黄色组"></button>
           <button class="swatch" data-group="red" style="--c:#e2837f;--check:#fff" aria-label="红色组" aria-pressed="false" title="红色组"></button>
           <button class="swatch" data-group="blue" style="--c:#8fa9cf;--check:#fff" aria-label="蓝色组" aria-pressed="false" title="蓝色组"></button>
-          <button class="swatch" data-group="gray" style="--c:#d8d8d8;--check:#3a3a3a" aria-label="灰色组" aria-pressed="false" title="灰色组（最多两件）"></button>
+          <button class="swatch" data-group="gray" style="--c:#d8d8d8;--check:#3a3a3a" aria-label="灰色组" aria-pressed="false" title="灰色组"></button>
         </div>
         <div class="dock-box drop-box empty" id="dropBox" aria-label="乐器放置框">
           <div class="drop-hint" id="dropHint">
@@ -610,6 +671,22 @@ body.is-playing .dock .drop-box{display:none}
       <span class="cap-names" id="captionNames">沙锤 · 鼓</span>
       <span class="cap-hint">点击色块可切换组别 · 播放时自动隐藏调节框</span>
     </div>
+  </section>
+
+  <section class="ensemble" id="ensemble" aria-label="五色合奏编排">
+    <div class="ens-head">
+      <div>
+        <h2>五色合奏</h2>
+        <p>每个颜色放一件乐器（可以重复），五组都放好后点「演奏」</p>
+      </div>
+      <span class="ens-hint" id="ensHint">还差 5 组</span>
+    </div>
+    <div class="ens-row" id="ensRow"></div>
+    <button class="ens-play" id="ensPlay" type="button" disabled>
+      <svg class="ic-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.53.85l10-6.5a1 1 0 0 0 0-1.7l-10-6.5A1 1 0 0 0 8 5.5Z"/></svg>
+      <svg class="ic-stop" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6.5" y="6.5" width="11" height="11" rx="2"/></svg>
+      <span id="ensPlayLabel">演奏</span>
+    </button>
   </section>
 
   <aside class="sidebar" aria-label="乐器库">
@@ -1194,9 +1271,113 @@ body.is-playing .dock .drop-box{display:none}
     els.playBtn.title = isPlaying ? '停止播放' : (n ? '播放当前组别' : '先拖入一个乐器');
   }
 
+  /* ================= 五色合奏 ================= */
+  function ensembleMissing() {
+    return GROUP_KEYS.filter(g => !state.assignments[g].length);
+  }
+
+  function renderEnsemble() {
+    const missing = ensembleMissing();
+    els.ensRow.innerHTML = GROUP_KEYS.map(g => {
+      const id = state.assignments[g][0];
+      const ins = id ? BY_ID[id] : null;
+      return '<div class="ens-slot ' + (ins ? 'filled' : 'empty') + '" data-ens="' + g + '" role="button" tabindex="0"' +
+          ' style="--swatch:' + GROUPS[g].swatch + ';--tint:' + (ins ? ins.tint : '#f7f5ee') + '"' +
+          ' aria-label="' + GROUPS[g].label + '组' + (ins ? '，' + ins.name : '，还没有乐器') + '">' +
+        '<span class="ens-label"><i style="background:' + GROUPS[g].swatch + '"></i>' + GROUPS[g].label + '</span>' +
+        '<span class="ens-box">' + (ins ? iconMarkup(id, 'ens-icon') : '+') + '</span>' +
+        '<span class="ens-name">' + (ins ? ins.name : '拖入乐器') + '</span>' +
+        (ins ? '<button class="ens-x" type="button" data-ensx="' + g + '" aria-label="移除' + ins.name + '">×</button>' : '') +
+      '</div>';
+    }).join('');
+    els.ensHint.textContent = missing.length ? ('还差 ' + missing.length + ' 组') : '五组齐了';
+    els.ensHint.classList.toggle('ready', !missing.length);
+    if (playing && playing.mode === 'ensemble' && playing.currentGroup) {
+      const slotEl = $('.ens-slot[data-ens="' + playing.currentGroup + '"]', els.ensRow);
+      if (slotEl) slotEl.classList.add('playing');
+      els.ensHint.textContent = '正在演奏 ' + GROUPS[playing.currentGroup].label + '组';
+      els.ensHint.classList.remove('ready');
+    }
+    updateEnsButton();
+  }
+
+  function updateEnsButton() {
+    const missing = ensembleMissing();
+    const isPlaying = !!playing;
+    els.ensPlay.disabled = !isPlaying && missing.length > 0;
+    els.ensPlay.classList.toggle('is-stop', isPlaying);
+    els.ensPlayLabel.textContent = isPlaying ? '停止' : '演奏';
+    els.ensPlay.title = isPlaying ? '停止演奏'
+      : (missing.length ? '还要选 ' + missing.length + ' 组' : '按 绿 → 黄 → 红 → 蓝 → 灰 的顺序演奏');
+    if (!isPlaying) {
+      els.ensHint.textContent = missing.length ? ('还差 ' + missing.length + ' 组') : '五组齐了';
+      els.ensHint.classList.toggle('ready', !missing.length);
+    }
+  }
+
+  function assignEnsemble(g, id) {
+    if (!GROUP_KEYS.includes(g) || !BY_ID[id]) return;
+    if (playing) stopPlayback();
+    state.assignments[g] = [id];
+    saveState();
+    renderAll();
+    if (currentId) renderModalActions();
+    toast(BY_ID[id].name + ' → ' + GROUPS[g].label + '组');
+  }
+
+  function clearEnsemble(g) {
+    if (playing) stopPlayback();
+    state.assignments[g] = [];
+    saveState();
+    renderAll();
+  }
+
+  /* 触屏设备没法拖拽，点空白小框弹出乐器选择器 */
+  let ensPicker = null;
+  function closeEnsPicker() {
+    if (ensPicker) { ensPicker.remove(); ensPicker = null; }
+  }
+  function openEnsPicker(g, anchor) {
+    closeEnsPicker();
+    const el = document.createElement('div');
+    el.className = 'ens-picker';
+    el.innerHTML = INSTRUMENTS.map(i =>
+      '<button type="button" data-pick="' + i.id + '" style="--accent:' + i.accent + '">' +
+        '<span class="pk-icon" style="background:' + i.tint + ';border-radius:9px">' + iconMarkup(i.id, 'pk-svg') + '</span>' +
+        '<span>' + i.name + '</span>' +
+      '</button>').join('');
+    document.body.appendChild(el);
+    const r = anchor.getBoundingClientRect();
+    const w = el.offsetWidth || 270;
+    const left = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), window.innerWidth - w - 8);
+    let top = r.bottom + 8;
+    if (top + el.offsetHeight > window.innerHeight - 8) {
+      top = Math.max(8, r.top - el.offsetHeight - 8);
+    }
+    el.style.left = left + 'px';
+    el.style.top = top + 'px';
+    el.addEventListener('click', e => {
+      const b = e.target.closest('[data-pick]');
+      if (!b) return;
+      assignEnsemble(g, b.dataset.pick);
+      closeEnsPicker();
+    });
+    ensPicker = el;
+    setTimeout(() => {
+      const off = ev => {
+        if (ensPicker && !ensPicker.contains(ev.target)) {
+          closeEnsPicker();
+          document.removeEventListener('pointerdown', off);
+        }
+      };
+      document.addEventListener('pointerdown', off);
+    }, 0);
+  }
+
   function renderAll() {
     renderCards();
     renderDock();
+    renderEnsemble();
     if (currentId) {
       renderModalMeta();
       renderModalAssets();
@@ -1741,7 +1922,7 @@ body.is-playing .dock .drop-box{display:none}
       const start = D * cum / totalW;
       cum += b.w;
       const end = D * cum / totalW;
-      return { block: b, start, dur: Math.max(0.001, end - start) };
+      return { block: b, start, dur: Math.max(0.001, end - start), group: state.group, ids };
     });
 
     const audios = [];
@@ -1782,7 +1963,6 @@ body.is-playing .dock .drop-box{display:none}
       els.fxLayer.appendChild(g);
       playing.playheads.push(g);
     });
-
     document.body.classList.add('is-playing');
     updatePlayButton();
 
@@ -1811,6 +1991,15 @@ body.is-playing .dock .drop-box{display:none}
         const el = $('.band[data-index="' + BLOCKS.indexOf(seg.block) + '"]', els.bands);
         if (el) el.classList.add('playing');
         playing.activeBand = ai;
+        if (playing.mode === 'ensemble') {
+          $$('.ens-slot.playing', els.ensRow).forEach(x => x.classList.remove('playing'));
+          const slotEl = $('.ens-slot[data-ens="' + seg.group + '"]', els.ensRow);
+          if (slotEl) slotEl.classList.add('playing');
+          if (els.ensHint) {
+            els.ensHint.textContent = '正在演奏 ' + GROUPS[seg.group].label + '组';
+            els.ensHint.classList.remove('ready');
+          }
+        }
       }
 
       playing.segs.forEach((s, si) => {
@@ -1820,7 +2009,7 @@ body.is-playing .dock .drop-box{display:none}
           const frac = Math.max(0, Math.min(1, (nx - s.block.x) / s.block.w));
           if (elapsed >= s.start + frac * s.dur - 0.002) {
             playing.fired.add(key);
-            const insId = playing.ids[fxCounter++ % playing.ids.length];
+            const insId = s.ids[fxCounter++ % s.ids.length];
             spawnNoteFx(nx, s.block.y + 42, insId, BY_ID[insId].accent);
           }
         });
@@ -1837,6 +2026,161 @@ body.is-playing .dock .drop-box{display:none}
     toast('正在播放：' + ids.map(id => BY_ID[id].name).join('、'));
   }
 
+  /* 五色合奏：绿 → 黄 → 红 → 蓝 → 灰 依次演奏 */
+  const ENSEMBLE_GAP = 0.3;
+
+  async function startEnsemblePlayback() {
+    if (playing) return;
+    const missing = ensembleMissing();
+    if (missing.length) {
+      toast('还有 ' + missing.length + ' 组没选乐器，点下面的小方框选一个');
+      return;
+    }
+
+    const ctx = AudioEngine.ensure();
+    try { await ctx.resume(); } catch (e) {}
+
+    const segs = [];
+    const audios = [];
+    const timers = [];
+    const patterns = [];
+    let cursor = 0;
+
+    GROUP_KEYS.forEach(g => {
+      const ids = state.assignments[g].slice();
+      if (!ids.length) return;
+      const blocks = BLOCKS
+        .filter(b => b.group === g)
+        .sort((a, b) => a.y - b.y || a.x - b.x);
+      if (!blocks.length) return;
+      const totalW = blocks.reduce((s, b) => s + b.w, 0) || 1;
+
+      const withAudio = ids.filter(id => assets[id].effects[g]);
+      const durations = withAudio.map(id => durationCache.get(effectKey(id, g)) || 0).filter(n => n > 0);
+      let D;
+      if (withAudio.length && durations.length) {
+        D = Math.max.apply(null, durations);
+        if (withAudio.length < ids.length) D = Math.max(D, 4.8 * totalW / 912);
+      } else {
+        D = 4.8 * totalW / 912;
+      }
+      D = Math.min(120, Math.max(2.2, D));
+
+      const groupSegs = [];
+      let cum = 0;
+      blocks.forEach(b => {
+        const start = cursor + D * cum / totalW;
+        cum += b.w;
+        const end = cursor + D * cum / totalW;
+        groupSegs.push({ block: b, start, dur: Math.max(0.001, end - start), group: g, ids });
+      });
+      segs.push.apply(segs, groupSegs);
+
+      ids.forEach(id => {
+        const fx = assets[id].effects[g];
+        if (fx) {
+          const audio = new Audio(fx.url);
+          audio.volume = 0.95;
+          audio.preload = 'auto';
+          audios.push(audio);
+          const at = cursor;
+          timers.push(setTimeout(() => {
+            if (!playing || playing.mode !== 'ensemble') return;
+            audio.play().catch(() => {});
+          }, Math.max(0, at * 1000 + 40)));
+        } else {
+          const times = [];
+          groupSegs.forEach(s => {
+            blockNotes(s.block).forEach(x => {
+              const local = Math.max(0, Math.min(1, (x - s.block.x) / s.block.w));
+              times.push(s.start + local * s.dur);
+            });
+          });
+          patterns.push({ id, times });
+        }
+      });
+
+      cursor += D + ENSEMBLE_GAP;
+    });
+
+    if (!segs.length) {
+      toast('还没有可以演奏的组别');
+      return;
+    }
+
+    const t0 = ctx.currentTime + 0.1;
+    patterns.forEach(p => AudioEngine.playPattern(p.id, p.times, t0));
+
+    const total = segs[segs.length - 1].start + segs[segs.length - 1].dur;
+    playing = {
+      ids: [],
+      segs,
+      D: total,
+      mode: 'ensemble',
+      start: performance.now(),
+      audios,
+      timers,
+      raf: 0,
+      fired: new Set(),
+      playheads: [],
+      activeBand: -1
+    };
+
+    $$('.playhead-group', els.fxLayer).forEach(n => n.remove());
+    segs.forEach(s => {
+      const g = makePlayhead(s.block, GROUPS[s.group].stroke);
+      els.fxLayer.appendChild(g);
+      playing.playheads.push(g);
+    });
+    document.body.classList.add('is-playing');
+    updatePlayButton();
+    updateEnsButton();
+
+    const tick = () => {
+      if (!playing) return;
+      const elapsed = (performance.now() - playing.start) / 1000;
+
+      let ai = playing.segs.findIndex(s => elapsed < s.start + s.dur);
+      if (ai < 0) ai = playing.segs.length - 1;
+      const seg = playing.segs[ai];
+      const local = Math.max(0, Math.min(1, (elapsed - seg.start) / seg.dur));
+
+      playing.playheads.forEach((g, i) => {
+        if (i === ai) {
+          g.style.opacity = '1';
+          const x = seg.block.x + local * seg.block.w;
+          g.setAttribute('transform', 'translate(' + x.toFixed(2) + ' 0)');
+        } else {
+          g.style.opacity = '0';
+        }
+      });
+
+      if (playing.activeBand !== ai) {
+        $$('.band.playing', els.bands).forEach(el => el.classList.remove('playing'));
+        const el = $('.band[data-index="' + BLOCKS.indexOf(seg.block) + '"]', els.bands);
+        if (el) el.classList.add('playing');
+        playing.activeBand = ai;
+        playing.currentGroup = seg.group;
+        $$('.ens-slot.playing', els.ensRow).forEach(x => x.classList.remove('playing'));
+        const slotEl = $('.ens-slot[data-ens="' + seg.group + '"]', els.ensRow);
+        if (slotEl) slotEl.classList.add('playing');
+        if (els.ensHint) {
+          els.ensHint.textContent = '正在演奏 ' + GROUPS[seg.group].label + '组';
+          els.ensHint.classList.remove('ready');
+        }
+      }
+
+      if (elapsed >= playing.D) {
+        finishPlayback();
+        return;
+      }
+      playing.raf = requestAnimationFrame(tick);
+    };
+
+    playing.raf = requestAnimationFrame(tick);
+    toast('五色合奏：绿 → 黄 → 红 → 蓝 → 灰');
+  }
+
   function finishPlayback() {
     if (!playing) return;
     const p = playing;
@@ -1846,6 +2190,7 @@ body.is-playing .dock .drop-box{display:none}
     p.audios.forEach(a => {
       try { a.pause(); } catch (e) {}
     });
+    (p.timers || []).forEach(t => clearTimeout(t));
 
     p.playheads.forEach(g => {
       g.style.opacity = '0';
@@ -1853,8 +2198,10 @@ body.is-playing .dock .drop-box{display:none}
     });
 
     $$('.band.playing', els.bands).forEach(el => el.classList.remove('playing'));
+    $$('.ens-slot.playing', els.ensRow).forEach(el => el.classList.remove('playing'));
     document.body.classList.remove('is-playing');
     updatePlayButton();
+    updateEnsButton();
 
     setTimeout(() => {
       if (!playing) {
@@ -2246,6 +2593,49 @@ body.is-playing .dock .drop-box{display:none}
     els.playBtn.addEventListener('click', () => {
       if (playing) stopPlayback();
       else startPlayback();
+    });
+
+    // 五色合奏：点小框选乐器、× 移除、拖入乐器
+    els.ensRow.addEventListener('click', e => {
+      const x = e.target.closest('[data-ensx]');
+      if (x) {
+        e.stopPropagation();
+        clearEnsemble(x.dataset.ensx);
+        return;
+      }
+      const slot = e.target.closest('[data-ens]');
+      if (slot) openEnsPicker(slot.dataset.ens, slot);
+    });
+    els.ensRow.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const slot = e.target.closest('[data-ens]');
+      if (!slot || e.target.closest('[data-ensx]')) return;
+      e.preventDefault();
+      openEnsPicker(slot.dataset.ens, slot);
+    });
+    els.ensRow.addEventListener('dragover', e => {
+      const slot = e.target.closest('[data-ens]');
+      if (!slot) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      $$('.ens-slot.over', els.ensRow).forEach(n => { if (n !== slot) n.classList.remove('over'); });
+      slot.classList.add('over');
+    });
+    els.ensRow.addEventListener('dragleave', e => {
+      const slot = e.target.closest('[data-ens]');
+      if (slot && !slot.contains(e.relatedTarget)) slot.classList.remove('over');
+    });
+    els.ensRow.addEventListener('drop', e => {
+      const slot = e.target.closest('[data-ens]');
+      if (!slot) return;
+      e.preventDefault();
+      $$('.ens-slot.over', els.ensRow).forEach(n => n.classList.remove('over'));
+      const id = e.dataTransfer.getData('text/plain');
+      if (BY_ID[id]) assignEnsemble(slot.dataset.ens, id);
+    });
+    els.ensPlay.addEventListener('click', () => {
+      if (playing) stopPlayback();
+      else startEnsemblePlayback();
     });
 
     // 弹窗
@@ -3024,6 +3414,10 @@ body.is-playing .dock .drop-box{display:none}
     els.resetAll = $('#resetAll');
     els.screenBtn = $('#screenBtn');
     els.syncChip = $('#syncChip');
+    els.ensRow = $('#ensRow');
+    els.ensHint = $('#ensHint');
+    els.ensPlay = $('#ensPlay');
+    els.ensPlayLabel = $('#ensPlayLabel');
     els.overlay = $('#overlay');
     els.modal = $('#modal');
     els.mTitle = $('#mTitle');
