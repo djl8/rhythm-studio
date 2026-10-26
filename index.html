@@ -2893,6 +2893,7 @@ body.is-playing .dock .drop-box{display:none}
       if (window.__rhythmDebug) window.__rhythmDebug.log('sync-give-up', why);
       setSyncChip('warn', '云端同步失败 · 点此重试');
       if (els.syncChip) els.syncChip.title = why;
+      toast('云端同步失败：' + String(why).slice(0, 60) + '（点右上角可重试）', 7000);
       return false;
     }
 
@@ -3117,6 +3118,15 @@ body.is-playing .dock .drop-box{display:none}
         renderAll();
         dbg.log('ui-refreshed-after-online');
       }).catch(() => {});
+    });
+
+    // 平板切回前台时，如果上次同步是失败的，自动再试一次
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      const chip = els.syncChip;
+      if (!chip || !chip.classList.contains('warn')) return;
+      dbg.log('visible-retry');
+      gh.retryNow(true).then(() => loadSavedAssets()).then(() => renderAll()).catch(() => {});
     });
 
     renderAll();
