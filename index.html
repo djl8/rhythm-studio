@@ -1074,6 +1074,23 @@ body.is-playing .dock .drop-box{display:none}
     });
   }
 
+  /* 懒加载 object URL：视频/音色只在用到时才创建，避免一打开就读几百 MB */
+  function assetUrl(a) {
+    if (!a) return null;
+    if (!a.url && a.blob) a.url = URL.createObjectURL(a.blob);
+    return a.url;
+  }
+  function revokeAssetUrl(a) {
+    if (a && a.url) { URL.revokeObjectURL(a.url); a.url = null; }
+  }
+
+  /* 时长懒探测：缓存里没有就后台探测，本次先用默认时长，下次播放就准确了 */
+  function ensureDuration(key, url) {
+    if (durationCache.has(key)) return durationCache.get(key);
+    if (url) probeDuration(url, key);
+    return 0;
+  }
+
   async function loadSavedAssets() {
     const rows = await idbLoadAll();
     for (const row of rows) {
@@ -1081,18 +1098,31 @@ body.is-playing .dock .drop-box{display:none}
       const id = parts[0];
       const type = parts[1];
       if (!BY_ID[id] || !row.val || !row.val.blob) continue;
+      const blob = row.val.blob;
+      const name = row.val.name || '';
+
       if (type === 'effect') {
         const g = parts[2];
         if (!GROUP_KEYS.includes(g)) continue;
-        const url = URL.createObjectURL(row.val.blob);
-        assets[id].effects[g] = { url, name: row.val.name || '', blob: row.val.blob };
-        probeDuration(url, effectKey(id, g));
+        const slot = assets[id].effects[g];
+        // 已加载且文件大小一致 → 跳过（避免重复读 IDB + 重复建 URL）
+        if (slot && slot.blob && slot.blob.size === blob.size) continue;
+        if (slot && slot.url) URL.revokeObjectURL(slot.url);
+        // 音效是播放必需，URL 直接建好；时长懒探测（播放时再算）
+        assets[id].effects[g] = { url: URL.createObjectURL(blob), blob, name };
         continue;
       }
       if (type !== 'icon' && type !== 'video' && type !== 'timbre') continue;
-      const url = URL.createObjectURL(row.val.blob);
-      assets[id][type] = { url, name: row.val.name || '', blob: row.val.blob };
-      if (type === 'timbre') probeDuration(url, id + ':' + type);
+      const slot = assets[id][type];
+      if (slot && slot.blob && slot.blob.size === blob.size) continue;
+      if (slot && slot.url) URL.revokeObjectURL(slot.url);
+      if (type === 'icon') {
+        // 图标在卡片渲染时就要用，URL 直接建好
+        assets[id][type] = { url: URL.createObjectURL(blob), blob, name };
+      } else {
+        // 视频/音色只在弹窗/试听时才用到，先只存 blob，URL 懒加载
+        assets[id][type] = { url: null, blob, name };
+      }
     }
   }
 
@@ -1772,7 +1802,8 @@ body.is-playing .dock .drop-box{display:none}
     stopPreviewAudio();
     const a = assets[id].timbre;
     if (a) {
-      const audio = new Audio(a.url);
+      const url = assetUrl(a);
+      const audio = new Audio(url);
       audio.volume = 0.95;
       previewAudio = audio;
       audio.play().catch(() => toast('音频无法播放，请重新上传'));
@@ -1786,7 +1817,7 @@ body.is-playing .dock .drop-box{display:none}
     const g = GROUP_KEYS.includes(group) ? group : state.group;
     const a = assets[id].effects[g];
     if (a) {
-      const audio = new Audio(a.url);
+      const audio = new Audio(assetUrl(a));
       audio.volume = 0.95;
       previewAudio = audio;
       audio.play().catch(() => toast('音频无法播放，请重新上传'));
@@ -1906,7 +1937,7 @@ body.is-playing .dock .drop-box{display:none}
     try { await ctx.resume(); } catch (e) {}
 
     const withAudio = ids.filter(id => assets[id].effects[state.group]);
-    const durations = withAudio.map(id => durationCache.get(effectKey(id, state.group)) || 0).filter(n => n > 0);
+    const durations = withAudio.map(id => ensureDuration(effectKey(id, state.group), assetUrl(assets[id].effects[state.group]))).filter(n => n > 0);
     let D;
     if (withAudio.length && durations.length) {
       D = Math.max.apply(null, durations);
@@ -1927,7 +1958,7 @@ body.is-playing .dock .drop-box{display:none}
 
     const audios = [];
     withAudio.forEach(id => {
-      const audio = new Audio(assets[id].effects[state.group].url);
+      const audio = new Audio(assetUrl(assets[id].effects[state.group]));
       audio.volume = 0.95;
       audio.preload = 'auto';
       audio.play().catch(() => {});
@@ -2056,7 +2087,7 @@ body.is-playing .dock .drop-box{display:none}
       const totalW = blocks.reduce((s, b) => s + b.w, 0) || 1;
 
       const withAudio = ids.filter(id => assets[id].effects[g]);
-      const durations = withAudio.map(id => durationCache.get(effectKey(id, g)) || 0).filter(n => n > 0);
+      const durations = withAudio.map(id => ensureDuration(effectKey(id, g), assetUrl(assets[id].effects[g]))).filter(n => n > 0);
       let D;
       if (withAudio.length && durations.length) {
         D = Math.max.apply(null, durations);
@@ -2079,7 +2110,7 @@ body.is-playing .dock .drop-box{display:none}
       ids.forEach(id => {
         const fx = assets[id].effects[g];
         if (fx) {
-          const audio = new Audio(fx.url);
+          const audio = new Audio(assetUrl(fx));
           audio.volume = 0.95;
           audio.preload = 'auto';
           audios.push(audio);
@@ -2240,7 +2271,7 @@ body.is-playing .dock .drop-box{display:none}
     if (!currentId) return;
     const ins = BY_ID[currentId];
     const custom = assets[currentId].video;
-    const src = custom ? custom.url : ins.video;
+    const src = custom ? (assetUrl(custom) || ins.video) : ins.video;
     const poster = custom ? '' : ins.poster;
     els.mediaError.classList.remove('show');
     els.mVideo.pause();
@@ -2389,7 +2420,7 @@ body.is-playing .dock .drop-box{display:none}
       return;
     }
     const slot = type === 'effect' ? assets[id].effects[group] : assets[id][type];
-    if (slot) URL.revokeObjectURL(slot.url);
+    if (slot) revokeAssetUrl(slot);
     const asset = { url: URL.createObjectURL(file), name: file.name || '', blob: file };
     if (type === 'effect') assets[id].effects[group] = asset;
     else assets[id][type] = asset;
@@ -2407,7 +2438,7 @@ body.is-playing .dock .drop-box{display:none}
     if (!slot) return;
     const key = type === 'effect' ? effectKey(id, group) : id + ':' + type;
     try { await idbDel(key); } catch (e) {}
-    URL.revokeObjectURL(slot.url);
+    revokeAssetUrl(slot);
     if (type === 'effect') assets[id].effects[group] = null;
     else assets[id][type] = null;
     durationCache.delete(key);
@@ -2420,7 +2451,7 @@ body.is-playing .dock .drop-box{display:none}
     for (const type of ['icon', 'video', 'timbre']) {
       if (assets[id][type]) {
         try { await idbDel(id + ':' + type); } catch (e) {}
-        URL.revokeObjectURL(assets[id][type].url);
+        revokeAssetUrl(assets[id][type]);
         assets[id][type] = null;
         durationCache.delete(id + ':' + type);
       }
@@ -2428,7 +2459,7 @@ body.is-playing .dock .drop-box{display:none}
     for (const g of GROUP_KEYS) {
       if (assets[id].effects[g]) {
         try { await idbDel(effectKey(id, g)); } catch (e) {}
-        URL.revokeObjectURL(assets[id].effects[g].url);
+        revokeAssetUrl(assets[id].effects[g]);
         assets[id].effects[g] = null;
         durationCache.delete(effectKey(id, g));
       }
@@ -2463,14 +2494,14 @@ body.is-playing .dock .drop-box{display:none}
     INSTRUMENTS.forEach(ins => {
       ['icon', 'video', 'timbre'].forEach(type => {
         if (assets[ins.id][type]) {
-          URL.revokeObjectURL(assets[ins.id][type].url);
+          revokeAssetUrl(assets[ins.id][type]);
           assets[ins.id][type] = null;
         }
       });
       GROUP_KEYS.forEach(g => {
         const a = assets[ins.id].effects[g];
         if (a) {
-          URL.revokeObjectURL(a.url);
+          revokeAssetUrl(a);
           assets[ins.id].effects[g] = null;
         }
       });
@@ -3146,8 +3177,11 @@ body.is-playing .dock .drop-box{display:none}
       saveState();
       if (!silent) renderConfig();
 
-      _log('calling-loadSavedAssets');
-      await loadSavedAssets();
+      // 只有真正下载了新文件才需要重新加载内存（loadSavedAssets 本身已增量，但读 IDB 仍有开销）
+      if (loaded > 0) {
+        _log('calling-loadSavedAssets');
+        await loadSavedAssets();
+      }
       _log('all-done', { loaded, failed: failedEntries.length });
 
       if (!silent) {
