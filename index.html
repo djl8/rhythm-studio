@@ -761,6 +761,9 @@ body.is-playing .dock .drop-box{display:none}
   const GH_API = 'https://api.github.com';
   const GH_RAW = 'https://raw.githubusercontent.com';
 
+  /* 默认云端仓库 —— 打开网址即自动从这里拉取，零配置零 token */
+  const DEFAULT_REPO = { user: 'djl8', repo: 'rhythm-studio', branch: 'main', path: 'assets' };
+
   /* ================= 数据 ================= */
   const GROUPS = {
     green:  { label: '绿色', swatch: '#a9c27b', stroke: '#88a95b', fill: '#dfeccb', soft: '#eef4e4' },
@@ -2581,20 +2584,33 @@ body.is-playing .dock .drop-box{display:none}
     }
 
     /* --------- 从云端拉取 --------- */
-    async function doPull() {
-      if (!config) throw new Error('未配置');
-      updateStatus('syncing', '正在从云端拉取...');
+    async function doPull(opts) {
+      opts = opts || {};
+      const silent = !!opts.silent;  // 静默模式：自动拉取时不弹 toast
+      // repo 优先级：显式传入 → 用户已配置的 config → 默认仓库（零配置）
+      const repo = opts.repo ||
+                   (config && config.user && config.repo ? config : null) ||
+                   DEFAULT_REPO;
+      const repoLabel = repo.user + '/' + repo.repo;
+
+      if (!silent) updateStatus('syncing', '正在从云端拉取 ' + repoLabel + '...');
       let index;
       try {
-        const r = await raw(config.user + '/' + config.repo + '/' + config.branch + '/' + config.path + '/index.json');
+        const r = await raw(repo.user + '/' + repo.repo + '/' + repo.branch + '/' + repo.path + '/index.json');
         index = await r.json();
       } catch (e) {
-        updateStatus('error', '云端没有 index.json（' + (e.message || e) + '）');
-        throw e;
+        if (!silent) {
+          updateStatus('error', '云端没有 index.json（' + (e.message || e) + '）');
+          throw e;
+        }
+        // 静默模式下 index.json 不存在是正常的（可能还没上传过）
+        return 0;
       }
       if (!index || !Array.isArray(index.index) || index.index.length === 0) {
-        updateStatus('configured', '云端存档为空');
-        toast('云端存档为空，没有可拉取的内容');
+        if (!silent) {
+          updateStatus('configured', '云端存档为空');
+          toast('云端存档为空，没有可拉取的内容');
+        }
         return 0;
       }
 
@@ -2603,38 +2619,37 @@ body.is-playing .dock .drop-box{display:none}
       state.frozen = !!index.frozen;
       if (state.frozen) saveState();
 
-      // 清理本地旧的远端资产？不，合并：远端有 → 覆盖本地；远端没有 → 保留本地
+      // 合并：远端有 → 覆盖本地；远端没有 → 保留本地
       let loaded = 0;
       for (const entry of index.index) {
         try {
-          const r = await raw(config.user + '/' + config.repo + '/' + config.branch + '/' + entry.path);
+          const r = await raw(repo.user + '/' + repo.repo + '/' + repo.branch + '/' + entry.path);
           const blob = await r.blob();
           const info = { blob, name: entry.path.split('/').pop(), mimeType: entry.mimeType || blob.type };
           await idbPut(entry.key, info);
           loaded++;
         } catch (e) {
-          // 单个文件失败不中断整体
           console.warn('拉取资产失败', entry.path, e);
         }
       }
 
       state.syncedAt = Date.now();
       saveState();
-      renderConfig();
+      if (!silent) renderConfig();
 
       // 重新装载 assets 引用到内存
       await loadSavedAssets();
 
-      if (state.frozen) {
-        updateStatus('frozen', '已拉取 ' + loaded + ' 项 · 存档已冻结只读');
-        toast('已拉取 ' + loaded + ' 项 · 远端存档已冻结');
-      } else {
-        updateStatus('configured', '已拉取 ' + loaded + ' 项');
-        toast('已从云端拉取 ' + loaded + ' 项自定义');
+      if (!silent) {
+        if (state.frozen) {
+          updateStatus('frozen', '已拉取 ' + loaded + ' 项 · 存档已冻结只读');
+          toast('已拉取 ' + loaded + ' 项 · 远端存档已冻结');
+        } else {
+          updateStatus('configured', '已拉取 ' + loaded + ' 项');
+          toast('已从云端拉取 ' + loaded + ' 项自定义');
+        }
+        if (wasFrozen && !state.frozen) renderConfig();
       }
-
-      // 如果从 frozen 解锁（index.json 里 frozen 变 false），也更新
-      if (wasFrozen && !state.frozen) renderConfig();
 
       return loaded;
     }
@@ -2715,9 +2730,14 @@ body.is-playing .dock .drop-box{display:none}
     async function bootstrap() {
       loadConfig();
       renderConfig();
-      if (config && config.autoPull) {
-        try { await doPull(); }
-        catch { /* 首次可能没有 index.json */ }
+      // 1. 先从默认仓库静默自动拉取（零配置零 token，任何设备打开都能直接看到云端自定义）
+      try { await doPull({ silent: true }); }
+      catch { /* 拉不到不影响使用 */ }
+      // 2. 如果用户配置了自己的仓库（且和默认仓库不同），也自动拉一次
+      if (config && config.user && config.repo &&
+          (config.user !== DEFAULT_REPO.user || config.repo !== DEFAULT_REPO.repo)) {
+        try { await doPull({ silent: true }); }
+        catch {}
       }
     }
 
