@@ -2599,41 +2599,46 @@ body.is-playing .dock .drop-box{display:none}
     async function doPull(opts) {
       opts = opts || {};
       const silent = !!opts.silent;  // 静默模式：自动拉取时不弹 toast
+      const _d = window.__rhythmDebug;
+      const _log = (step, info) => { if (_d) _d.log('doPull:' + step, info); else console.log('[rhythm doPull]', step, info); };
+
       // repo 优先级：显式传入 → 用户已配置的 config → 默认仓库（零配置）
       const repo = opts.repo ||
                    (config && config.user && config.repo ? config : null) ||
                    DEFAULT_REPO;
       const repoLabel = repo.user + '/' + repo.repo;
+      _log('start', { silent, repo: repoLabel });
 
       if (!silent) updateStatus('syncing', '正在从云端拉取 ' + repoLabel + '...');
       let index;
       try {
+        _log('fetching-index-json');
         const r = await raw(repo.user + '/' + repo.repo + '/' + repo.branch + '/' + repo.path + '/index.json');
         index = await r.json();
+        _log('index-json-done', { entries: index.index && index.index.length });
       } catch (e) {
+        _log('index-json-failed', e.message || String(e));
         if (!silent) {
           updateStatus('error', '云端没有 index.json（' + (e.message || e) + '）');
           throw e;
         }
-        // 静默模式下 index.json 不存在是正常的（可能还没上传过）
         return 0;
       }
       if (!index || !Array.isArray(index.index) || index.index.length === 0) {
-        if (!silent) {
-          updateStatus('configured', '云端存档为空');
-          toast('云端存档为空，没有可拉取的内容');
-        }
+        _log('index-empty');
+        if (!silent) { updateStatus('configured', '云端存档为空'); toast('云端存档为空'); }
         return 0;
       }
 
-      // 先记 frozen 状态
       const wasFrozen = state.frozen;
       state.frozen = !!index.frozen;
       if (state.frozen) saveState();
 
-      // 并行下载所有文件（Promise.allSettled 不会被单个失败阻断）
-      // 加 20 秒总量超时 —— 超时就放弃剩余的，已经下载的照样能用
+      // 并行下载所有文件 —— 20s 总量超时保护 + 10s 单个超时（在 raw 里）
       const TOTAL_TIMEOUT = 20000;
+      _log('start-downloads', { count: index.index.length });
+      const t0 = Date.now();
+
       const work = index.index.map(entry => (async () => {
         try {
           const r = await raw(repo.user + '/' + repo.repo + '/' + repo.branch + '/' + entry.path);
@@ -2641,42 +2646,36 @@ body.is-playing .dock .drop-box{display:none}
           const info = { blob, name: entry.path.split('/').pop(), mimeType: entry.mimeType || blob.type };
           await idbPut(entry.key, info);
           return true;
-        } catch (e) {
-          // 静默模式下不刷 console，减少干扰
-          if (!silent) console.warn('拉取资产失败', entry.path, e);
-          return false;
-        }
+        } catch (e) { return false; }
       })());
 
       let results;
       try {
         results = await Promise.race([
           Promise.allSettled(work),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('拉取超时 (' + TOTAL_TIMEOUT / 1000 + 's)')), TOTAL_TIMEOUT))
+          new Promise((_, rej) => setTimeout(() => rej(new Error('TOTAL_TIMEOUT')), TOTAL_TIMEOUT))
         ]);
       } catch (e) {
-        // 总量超时了 —— 不丢已经下载的，继续往下走
-        console.warn('autoPull 部分超时，已下载的仍然生效:', e.message);
-        results = await Promise.allSettled(work);  // 等剩余的慢慢跑完（不 await 也行，但等它们安静退出）
+        _log('timeout-partial', e.message);
+        results = await Promise.allSettled(work);  // 等剩余的安静退出
       }
+
+      const dt = Date.now() - t0;
       let loaded = 0;
       for (const r of results) { if (r.status === 'fulfilled' && r.value) loaded++; }
+      _log('downloads-done', { loaded, total: index.index.length, dt_ms: dt });
 
       state.syncedAt = Date.now();
       saveState();
       if (!silent) renderConfig();
 
-      // 重新装载 assets 引用到内存
+      _log('calling-loadSavedAssets');
       await loadSavedAssets();
+      _log('all-done', { loaded });
 
       if (!silent) {
-        if (state.frozen) {
-          updateStatus('frozen', '已拉取 ' + loaded + ' 项 · 存档已冻结只读');
-          toast('已拉取 ' + loaded + ' 项 · 远端存档已冻结');
-        } else {
-          updateStatus('configured', '已拉取 ' + loaded + ' 项');
-          toast('已从云端拉取 ' + loaded + ' 项自定义');
-        }
+        if (state.frozen) { updateStatus('frozen', '已拉取 ' + loaded + ' 项'); toast('已拉取 ' + loaded + ' 项 · 存档已冻结'); }
+        else { updateStatus('configured', '已拉取 ' + loaded + ' 项'); toast('已从云端拉取 ' + loaded + ' 项自定义'); }
         if (wasFrozen && !state.frozen) renderConfig();
       }
 
@@ -2933,7 +2932,13 @@ body.is-playing .dock .drop-box{display:none}
     await loadSavedAssets();
     dbg.log('after-loadSavedAssets');
 
-    await gh.bootstrap();
+    // bootstrap 最多等 30 秒 —— 超时也放行，页面先能用着，autoPull 后台继续
+    try {
+      await Promise.race([
+        gh.bootstrap(),
+        new Promise(res => setTimeout(() => { console.warn('[rhythm] bootstrap 超时，放行继续'); res('TMO'); }, 30000))
+      ]);
+    } catch(e) { console.warn('[rhythm] bootstrap 抛错:', e); }
     dbg.log('after-bootstrap', { dbCount: 'see below' });
 
     // 检查 IndexedDB 里到底有多少条（autoPull 应该已经下载了）
