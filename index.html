@@ -52,6 +52,11 @@ svg{display:block}
 .brand .sub{margin-top:4px;font-size:12.5px;color:var(--muted);letter-spacing:.01em}
 .top-note{display:flex;align-items:center;gap:8px;padding:9px 14px;border:1px solid var(--line);border-radius:999px;background:rgba(255,253,247,.66);backdrop-filter:blur(10px);font-size:12px;color:#667061;white-space:nowrap}
 .top-note i{width:7px;height:7px;border-radius:50%;background:#7fae63;box-shadow:0 0 0 4px rgba(127,174,99,.16)}
+.sync-chip{display:inline-flex;align-items:center;height:34px;padding:0 13px;border:1px solid var(--line);border-radius:999px;background:rgba(255,253,247,.82);backdrop-filter:blur(10px);color:#4d5a4c;font-size:11.5px;font-weight:600;white-space:nowrap;cursor:default}
+.sync-chip[hidden]{display:none}
+.sync-chip.syncing{color:#8a6d1a;border-color:#ebdab0;background:#fff8e8}
+.sync-chip.ok{color:#3f6b4f;border-color:#cfe0c9;background:#f0f6ec}
+.sync-chip.warn{color:#a03a36;border-color:#efc9c6;background:#fbeceb;cursor:pointer}
 .top-actions{display:flex;align-items:center;gap:9px}
 .screen-btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border:1px solid var(--line);border-radius:999px;background:rgba(255,253,247,.78);backdrop-filter:blur(10px);color:#4d5a4c;font-size:11.5px;font-weight:600;cursor:pointer;transition:.16s;white-space:nowrap}
 .screen-btn:hover{background:#fffdf7;border-color:var(--line-strong);transform:translateY(-1px)}
@@ -550,6 +555,7 @@ body.is-playing .dock .drop-box{display:none}
     </div>
   </div>
   <div class="top-actions">
+    <button class="sync-chip" id="syncChip" type="button" hidden></button>
     <div class="top-note"><i></i>点击乐器卡片 · 拖拽到左上小框</div>
     <button class="screen-btn" id="screenBtn" type="button" title="全屏并切换为横屏">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M7.5 10h.01M16.5 14h.01"/></svg>
@@ -760,6 +766,7 @@ body.is-playing .dock .drop-box{display:none}
   const GH_STATE_KEY = 'rhythm-studio.github.state';
   const GH_API = 'https://api.github.com';
   const GH_RAW = 'https://raw.githubusercontent.com';
+  const GH_JSDELIVR = 'https://cdn.jsdelivr.net/gh';
 
   /* 默认云端仓库 —— 打开网址即自动从这里拉取，零配置零 token */
   const DEFAULT_REPO = { user: 'djl8', repo: 'rhythm-studio', branch: 'main', path: 'assets' };
@@ -2358,22 +2365,46 @@ body.is-playing .dock .drop-box{display:none}
       return r.json().catch(() => ({}));
     }
 
+    /* 同一份文件的多条读取通道，按顺序尝试：同源 Pages → jsDelivr → raw.githubusercontent
+       国内网络下 raw.githubusercontent 经常被拦，同源 Pages 最稳，jsDelivr 作兜底 */
+    function rawSources(path) {
+      const m = String(path).match(/^([^/]+)\/([^/]+)\/([^/]+)\/(.+)$/);
+      if (!m) return [GH_RAW + '/' + path];
+      const user = m[1], repo = m[2], branch = m[3], rest = m[4];
+      const list = [];
+      const sameOrigin = /^https?:$/.test(location.protocol) &&
+                         user === DEFAULT_REPO.user && repo === DEFAULT_REPO.repo;
+      if (sameOrigin) {
+        const base = location.origin + location.pathname.replace(/[^/]*$/, '');
+        if (base.indexOf('/assets/') < 0) list.push(base + rest);
+      }
+      list.push(GH_JSDELIVR + '/' + user + '/' + repo + '@' + branch + '/' + rest);
+      list.push(GH_RAW + '/' + user + '/' + repo + '/' + branch + '/' + rest);
+      return list;
+    }
+
     async function raw(path, opts) {
       opts = opts || {};
-      const timeout = opts.timeout != null ? opts.timeout : 10000;  // 默认 10s 超时，避免 Safari 卡死
-      let controller;
-      let timer;
-      if (timeout > 0) {
-        controller = new AbortController();
-        timer = setTimeout(() => controller.abort(), timeout);
+      const timeout = opts.timeout != null ? opts.timeout : 12000;  // 单通道 12s 超时
+      const sources = rawSources(path);
+      let lastErr = null;
+      for (let i = 0; i < sources.length; i++) {
+        let controller, timer;
+        if (timeout > 0) {
+          controller = new AbortController();
+          timer = setTimeout(() => controller.abort(), timeout);
+        }
+        try {
+          const r = await fetch(sources[i], { cache: 'default', signal: controller && controller.signal });
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r;
+        } catch (e) {
+          lastErr = e;
+        } finally {
+          if (timer) clearTimeout(timer);
+        }
       }
-      try {
-        const r = await fetch(GH_RAW + '/' + path, Object.assign({ cache: 'no-store', signal: controller && controller.signal }, opts));
-        if (!r.ok) throw new Error('远端文件 ' + path + ' 加载失败 (' + r.status + ')');
-        return r;
-      } finally {
-        if (timer) clearTimeout(timer);
-      }
+      throw new Error('云端文件加载失败：' + path + '（' + (lastErr && (lastErr.message || lastErr)) + '）');
     }
 
     function b64encode(buf) {
@@ -2610,6 +2641,7 @@ body.is-playing .dock .drop-box{display:none}
       _log('start', { silent, repo: repoLabel });
 
       if (!silent) updateStatus('syncing', '正在从云端拉取 ' + repoLabel + '...');
+      setSyncChip('syncing', '云端同步中…');
       let index;
       try {
         _log('fetching-index-json');
@@ -2622,11 +2654,14 @@ body.is-playing .dock .drop-box{display:none}
           updateStatus('error', '云端没有 index.json（' + (e.message || e) + '）');
           throw e;
         }
+        setSyncChip('warn', '云端同步失败 · 点此重试');
         return 0;
       }
       if (!index || !Array.isArray(index.index) || index.index.length === 0) {
         _log('index-empty');
         if (!silent) { updateStatus('configured', '云端存档为空'); toast('云端存档为空'); }
+        setSyncChip('ok', '云端暂无存档');
+        syncChipTimer = setTimeout(() => { if (els.syncChip) els.syncChip.hidden = true; }, 5000);
         return 0;
       }
 
@@ -2634,36 +2669,45 @@ body.is-playing .dock .drop-box{display:none}
       state.frozen = !!index.frozen;
       if (state.frozen) saveState();
 
-      // 并行下载所有文件 —— 20s 总量超时保护 + 10s 单个超时（在 raw 里）
-      const TOTAL_TIMEOUT = 20000;
+      // 限流并发下载：手机端 64 个并发请求会被浏览器排队/掐断，改成 5 路并发 + 单文件重试
+      const CONCURRENCY = 5;
+      const DEADLINE = Date.now() + 60000;
       _log('start-downloads', { count: index.index.length });
       const t0 = Date.now();
+      let loaded = 0;
+      const failedEntries = [];
 
-      const work = index.index.map(entry => (async () => {
-        try {
-          const r = await raw(repo.user + '/' + repo.repo + '/' + repo.branch + '/' + entry.path);
-          const blob = await r.blob();
-          const info = { blob, name: entry.path.split('/').pop(), mimeType: entry.mimeType || blob.type };
-          await idbPut(entry.key, info);
-          return true;
-        } catch (e) { return false; }
-      })());
-
-      let results;
-      try {
-        results = await Promise.race([
-          Promise.allSettled(work),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('TOTAL_TIMEOUT')), TOTAL_TIMEOUT))
-        ]);
-      } catch (e) {
-        _log('timeout-partial', e.message);
-        results = await Promise.allSettled(work);  // 等剩余的安静退出
+      async function fetchOne(entry) {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          if (Date.now() > DEADLINE) return false;
+          try {
+            const r = await raw(repo.user + '/' + repo.repo + '/' + repo.branch + '/' + entry.path);
+            const blob = await r.blob();
+            if (!blob.size) throw new Error('空文件');
+            await idbPut(entry.key, { blob, name: entry.path.split('/').pop(), mimeType: entry.mimeType || blob.type });
+            return true;
+          } catch (e) {
+            if (attempt === 0) await new Promise(res => setTimeout(res, 300));
+          }
+        }
+        return false;
       }
 
+      let cursor = 0;
+      const runners = [];
+      for (let i = 0; i < Math.min(CONCURRENCY, index.index.length); i++) {
+        runners.push((async () => {
+          while (cursor < index.index.length && Date.now() <= DEADLINE) {
+            const entry = index.index[cursor++];
+            if (await fetchOne(entry)) loaded++;
+            else failedEntries.push(entry.key);
+          }
+        })());
+      }
+      await Promise.all(runners);
+
       const dt = Date.now() - t0;
-      let loaded = 0;
-      for (const r of results) { if (r.status === 'fulfilled' && r.value) loaded++; }
-      _log('downloads-done', { loaded, total: index.index.length, dt_ms: dt });
+      _log('downloads-done', { loaded, total: index.index.length, failed: failedEntries.length, dt_ms: dt });
 
       state.syncedAt = Date.now();
       saveState();
@@ -2671,7 +2715,7 @@ body.is-playing .dock .drop-box{display:none}
 
       _log('calling-loadSavedAssets');
       await loadSavedAssets();
-      _log('all-done', { loaded });
+      _log('all-done', { loaded, failed: failedEntries.length });
 
       if (!silent) {
         if (state.frozen) { updateStatus('frozen', '已拉取 ' + loaded + ' 项'); toast('已拉取 ' + loaded + ' 项 · 存档已冻结'); }
@@ -2679,6 +2723,7 @@ body.is-playing .dock .drop-box{display:none}
         if (wasFrozen && !state.frozen) renderConfig();
       }
 
+      finishSyncChip(loaded, index.index.length, failedEntries.length);
       return loaded;
     }
 
@@ -2702,6 +2747,25 @@ body.is-playing .dock .drop-box{display:none}
       els.ghStatus.textContent = msg || '';
       els.ghStatus.className = 'gh-status';
       if (cls) els.ghStatus.classList.add(cls);
+    }
+
+    /* 顶部同步小标：让用户随时看到「云端到底拉没拉到、拉到了多少」 */
+    let syncChipTimer = null;
+    function setSyncChip(cls, text) {
+      const el = els.syncChip;
+      if (!el) return;
+      if (syncChipTimer) { clearTimeout(syncChipTimer); syncChipTimer = null; }
+      el.hidden = false;
+      el.className = 'sync-chip ' + cls;
+      el.textContent = text;
+    }
+    function finishSyncChip(loaded, total, failed) {
+      if (failed > 0 || loaded < total) {
+        setSyncChip('warn', '云端同步 ' + loaded + '/' + total + ' · 点此重试');
+        return;
+      }
+      setSyncChip('ok', '云端已同步 ' + loaded + ' 项');
+      syncChipTimer = setTimeout(() => { if (els.syncChip) els.syncChip.hidden = true; }, 6000);
     }
     function renderConfig() {
       // 面板状态
@@ -2812,6 +2876,19 @@ body.is-playing .dock .drop-box{display:none}
         }
       });
 
+      if (els.syncChip) els.syncChip.addEventListener('click', async () => {
+        if (!els.syncChip.classList.contains('warn')) return;
+        els.syncChip.disabled = true;
+        try {
+          await doPull({ silent: false });
+          await loadSavedAssets();
+          renderAll();
+        } catch (e) {
+          setSyncChip('warn', '云端同步失败 · 点此重试');
+        }
+        els.syncChip.disabled = false;
+      });
+
       els.ghTestConn.addEventListener('click', async () => {
         const cfg = {
           user: els.ghUser.value.trim(), repo: els.ghRepo.value.trim(),
@@ -2869,6 +2946,7 @@ body.is-playing .dock .drop-box{display:none}
     els.countBadge = $('#countBadge');
     els.resetAll = $('#resetAll');
     els.screenBtn = $('#screenBtn');
+    els.syncChip = $('#syncChip');
     els.overlay = $('#overlay');
     els.modal = $('#modal');
     els.mTitle = $('#mTitle');
