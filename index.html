@@ -2933,36 +2933,18 @@ body.is-playing .dock .drop-box{display:none}
     await loadSavedAssets();
     dbg.log('after-loadSavedAssets');
 
-    // bootstrap 最多等 30 秒 —— 超时也放行，页面先能用着，autoPull 后台继续
-    try {
-      await Promise.race([
-        gh.bootstrap(),
-        new Promise(res => setTimeout(() => { console.warn('[rhythm] bootstrap 超时，放行继续'); res('TMO'); }, 30000))
-      ]);
-    } catch(e) { console.warn('[rhythm] bootstrap 抛错:', e); }
-    dbg.log('after-bootstrap', { dbCount: 'see below' });
-
-    // 检查 IndexedDB 里到底有多少条（autoPull 应该已经下载了）
-    try {
-      const count = await new Promise((res, rej) => {
-        const r = indexedDB.open('rhythm-studio-assets');
-        r.onsuccess = () => {
-          const t = r.result.transaction('files','readonly');
-          const c = t.objectStore('files').count();
-          c.onsuccess = () => res(c.result);
-          c.onerror = () => rej(c.error);
-        };
-        r.onerror = () => rej(r.error);
-      });
-      dbg.log('db-count', count);
-    } catch(e) { dbg.log('db-err', e.message); }
-
-    // 检查 assets 上有多少自定义
-    let customCount = 0;
-    for (const id of ['shaker','tube','bell','drum','handbell','doublereed','triangle','tambourine']) {
-      if (assets[id].icon && assets[id].icon.blob) customCount++;
-    }
-    dbg.log('custom-icons', customCount);
+    // autoPull 彻底 fire-and-forget —— 绝对不阻塞 UI
+    // 页面先用默认 SVG 素材渲染，autoPull 在后台静默下载完后自动替换 UI
+    setTimeout(() => {
+      gh.bootstrap().then(() => {
+        dbg.log('bootstrap-complete');
+        loadSavedAssets().then(() => {
+          renderAll();
+          dbg.log('ui-refreshed-after-pull');
+        });
+      }).catch(e => { dbg.log('bootstrap-error', e && e.message); });
+    }, 300);
+    dbg.log('bootstrap-fire-and-forget');
 
     renderAll();
     if (!storageOK) toast('当前环境无法本地保存，自定义只在本次打开有效');
