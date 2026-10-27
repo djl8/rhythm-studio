@@ -1,22 +1,13 @@
 /* 节奏工坊离线缓存
-   安装时只预缓存「页面 + 图标」这类必需的小文件（约 0.5MB），保证首次打开就能秒装成功；
-   视频 / 音色 / 音效这些大文件在真正播放或打开时自动落到缓存里，之后断网也能用。 */
-const CACHE = 'rhythm-studio-v20261027b';
+   安装阶段只预缓存页面本体和图标这类小文件（约 200KB），弱网也能几秒装完、SW 立刻生效；
+   视频 / 音色 / 音效在真正播放或打开时自动落到缓存里，用过一次之后断网也能用。 */
+const CACHE = 'rhythm-studio-v20261027c';
 const CORE = [
-  "./",
   "./index.html",
   "./manifest.webmanifest",
   "./icon-180.png",
   "./icon-192.png",
-  "./icon-512.png",
-  "./assets/bell/icon.jpg",
-  "./assets/doublereed/icon.jpg",
-  "./assets/drum/icon.jpg",
-  "./assets/handbell/icon.jpg",
-  "./assets/shaker/icon.jpeg",
-  "./assets/tambourine/icon.jpg",
-  "./assets/triangle/icon.jpg",
-  "./assets/tube/icon.jpg"
+  "./icon-512.png"
 ];
 
 const TIMEOUT = 25000;
