@@ -3666,7 +3666,8 @@ body.is-playing .dock .drop-box{display:none}
      之后（断网 / 弱网）打开同一个网址也能秒开。离线版单文件不走这里 */
   if (!OFFLINE && 'serviceWorker' in navigator && location.protocol === 'https:') {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(() => {});
+      // updateViaCache:'none' —— 关键：sw.js 本身不能被 CDN 缓存 10 分钟，否则更新到不了设备
+      navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' }).catch(() => {});
     });
   }
 })();
