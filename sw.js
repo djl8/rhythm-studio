@@ -1,5 +1,7 @@
-/* 节奏工坊离线缓存：首次联网打开后，素材全部落到本地，之后完全离线可用 */
-const CACHE = 'rhythm-studio-v20261027a';
+/* 节奏工坊离线缓存
+   安装时只预缓存「页面 + 图标」这类必需的小文件（约 0.5MB），保证首次打开就能秒装成功；
+   视频 / 音色 / 音效这些大文件在真正播放或打开时自动落到缓存里，之后断网也能用。 */
+const CACHE = 'rhythm-studio-v20261027b';
 const CORE = [
   "./",
   "./index.html",
@@ -7,77 +9,31 @@ const CORE = [
   "./icon-180.png",
   "./icon-192.png",
   "./icon-512.png",
-  "./assets/bell/effect-blue.m4a",
-  "./assets/bell/effect-gray.m4a",
-  "./assets/bell/effect-green.m4a",
-  "./assets/bell/effect-red.m4a",
-  "./assets/bell/effect-yellow.m4a",
   "./assets/bell/icon.jpg",
-  "./assets/bell/timbre.m4a",
-  "./assets/bell/video.mp4",
-  "./assets/doublereed/effect-blue.m4a",
-  "./assets/doublereed/effect-gray.m4a",
-  "./assets/doublereed/effect-green.m4a",
-  "./assets/doublereed/effect-red.m4a",
-  "./assets/doublereed/effect-yellow.m4a",
   "./assets/doublereed/icon.jpg",
-  "./assets/doublereed/timbre.m4a",
-  "./assets/doublereed/video.mp4",
-  "./assets/drum/effect-blue.m4a",
-  "./assets/drum/effect-gray.m4a",
-  "./assets/drum/effect-green.m4a",
-  "./assets/drum/effect-red.m4a",
-  "./assets/drum/effect-yellow.m4a",
   "./assets/drum/icon.jpg",
-  "./assets/drum/timbre.m4a",
-  "./assets/drum/video.mp4",
-  "./assets/handbell/effect-blue.m4a",
-  "./assets/handbell/effect-gray.m4a",
-  "./assets/handbell/effect-green.m4a",
-  "./assets/handbell/effect-red.m4a",
-  "./assets/handbell/effect-yellow.m4a",
   "./assets/handbell/icon.jpg",
-  "./assets/handbell/timbre.m4a",
-  "./assets/handbell/video.mp4",
-  "./assets/shaker/effect-blue.m4a",
-  "./assets/shaker/effect-gray.m4a",
-  "./assets/shaker/effect-green.m4a",
-  "./assets/shaker/effect-red.m4a",
-  "./assets/shaker/effect-yellow.m4a",
   "./assets/shaker/icon.jpeg",
-  "./assets/shaker/timbre.m4a",
-  "./assets/shaker/video.mp4",
-  "./assets/tambourine/effect-blue.m4a",
-  "./assets/tambourine/effect-gray.m4a",
-  "./assets/tambourine/effect-green.m4a",
-  "./assets/tambourine/effect-red.m4a",
-  "./assets/tambourine/effect-yellow.m4a",
   "./assets/tambourine/icon.jpg",
-  "./assets/tambourine/timbre.m4a",
-  "./assets/tambourine/video.mp4",
-  "./assets/triangle/effect-blue.m4a",
-  "./assets/triangle/effect-gray.m4a",
-  "./assets/triangle/effect-green.m4a",
-  "./assets/triangle/effect-red.m4a",
-  "./assets/triangle/effect-yellow.m4a",
   "./assets/triangle/icon.jpg",
-  "./assets/triangle/timbre.m4a",
-  "./assets/triangle/video.mp4",
-  "./assets/tube/effect-blue.m4a",
-  "./assets/tube/effect-gray.m4a",
-  "./assets/tube/effect-green.m4a",
-  "./assets/tube/effect-red.m4a",
-  "./assets/tube/effect-yellow.m4a",
-  "./assets/tube/icon.jpg",
-  "./assets/tube/timbre.m4a",
-  "./assets/tube/video.mp4"
+  "./assets/tube/icon.jpg"
 ];
+
+const TIMEOUT = 25000;
+
+function withTimeout(promise) {
+  return Promise.race([
+    promise,
+    new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), TIMEOUT))
+  ]);
+}
 
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const c = await caches.open(CACHE);
-    // 逐个加，单个文件失败不影响整体安装
-    await Promise.all(CORE.map(u => c.add(new Request(u, { cache: 'reload' })).catch(() => {})));
+    for (const u of CORE) {
+      try { await withTimeout(c.add(new Request(u, { cache: 'reload' }))); } catch (err) {}
+    }
     self.skipWaiting();
   })());
 });
@@ -129,7 +85,7 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // 其余同源资源：缓存优先 + 后台更新，打开就是秒开
+  // 其余同源资源：缓存优先 + 后台更新，用的越多离线越全
   e.respondWith((async () => {
     const cached = await caches.match(req, { ignoreSearch: true });
     const network = fetch(req).then(r => {
