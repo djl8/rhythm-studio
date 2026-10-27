@@ -972,6 +972,8 @@ body.is-playing .dock .drop-box{display:none}
 
   let currentId = null;
   let playing = null;
+  /* 正在准备播放（音频时长探测要等，异步期间防止重复点按钮叠出两条播放） */
+  let starting = false;
   let pendingUpload = null;
   let previewAudio = null;
   let demoTimer = 0;
@@ -1119,11 +1121,12 @@ body.is-playing .dock .drop-box{display:none}
     }
   }
 
-  /* 时长懒探测：缓存里没有就后台探测，本次先用默认时长，下次播放就准确了 */
-  function ensureDuration(key, url) {
-    if (durationCache.has(key)) return durationCache.get(key);
-    if (url) probeDuration(url, key);
-    return 0;
+  /* 时长探测：没缓存就等它探完，保证开始播放前每段音频的真实长度都是准的。
+     长度不准会让上一组的音乐拖进下一组，听起来就是两段音乐重叠 */
+  function measureDuration(key, url) {
+    if (durationCache.has(key)) return Promise.resolve(durationCache.get(key));
+    if (!url) return Promise.resolve(0);
+    return probeDuration(url, key).then(d => (d > 0 ? d : 0)).catch(() => 0);
   }
 
   async function loadSavedAssets() {
@@ -1369,9 +1372,9 @@ body.is-playing .dock .drop-box{display:none}
   function updatePlayButton() {
     const n = state.assignments[state.group].length;
     const isPlaying = !!playing;
-    els.playBtn.disabled = !isPlaying && n === 0;
+    els.playBtn.disabled = !isPlaying && (n === 0 || starting);
     els.playBtn.classList.toggle('is-stop', isPlaying);
-    els.playLabel.textContent = isPlaying ? '停止' : '播放';
+    els.playLabel.textContent = isPlaying ? '停止' : (starting ? '准备' : '播放');
     els.playBtn.setAttribute('aria-label', isPlaying ? '停止播放' : '开始播放');
     els.playBtn.title = isPlaying ? '停止播放' : (n ? '播放当前组别' : '先拖入一个乐器');
   }
@@ -1409,9 +1412,9 @@ body.is-playing .dock .drop-box{display:none}
   function updateEnsButton() {
     const missing = ensembleMissing();
     const isPlaying = !!playing;
-    els.ensPlay.disabled = !isPlaying && missing.length > 0;
+    els.ensPlay.disabled = !isPlaying && (missing.length > 0 || starting);
     els.ensPlay.classList.toggle('is-stop', isPlaying);
-    els.ensPlayLabel.textContent = isPlaying ? '停止' : '演奏';
+    els.ensPlayLabel.textContent = isPlaying ? '停止' : (starting ? '准备' : '演奏');
     els.ensPlay.title = isPlaying ? '停止演奏'
       : (missing.length ? '还要选 ' + missing.length + ' 组' : '按 绿 → 黄 → 红 → 蓝 → 灰 的顺序演奏');
     if (!isPlaying) {
@@ -1558,13 +1561,14 @@ body.is-playing .dock .drop-box{display:none}
   const AudioEngine = (() => {
     let ctx = null;
     let master = null;
+    let comp = null;
     let noiseBuf = null;
 
     function ensure() {
       if (!ctx) {
         const AC = window.AudioContext || window.webkitAudioContext;
         ctx = new AC();
-        const comp = ctx.createDynamicsCompressor();
+        comp = ctx.createDynamicsCompressor();
         comp.threshold.value = -16;
         comp.knee.value = 24;
         comp.ratio.value = 8;
@@ -1575,6 +1579,17 @@ body.is-playing .dock .drop-box{display:none}
       }
       if (ctx.state === 'suspended') ctx.resume().catch(() => {});
       return ctx;
+    }
+
+    /* 一键静音：换掉输出总线，之前排进未来时间的音符全部失效。
+       Web Audio 的 start/stop 一旦排定就取消不了，只能断开它所在的输出节点，
+       否则点“停止”之后残留的音符还会继续响，和新一次播放叠在一起 */
+    function silence() {
+      if (!ctx || !master || !comp) return;
+      try { master.disconnect(); } catch (e) {}
+      master = ctx.createGain();
+      master.gain.value = 0.62;
+      master.connect(comp);
     }
 
     function noise() {
@@ -1863,7 +1878,7 @@ body.is-playing .dock .drop-box{display:none}
       }
     }
 
-    return { ensure, hit, playPattern, demo };
+    return { ensure, hit, playPattern, demo, silence };
   })();
 
   function stopPreviewAudio() {
@@ -1996,7 +2011,7 @@ body.is-playing .dock .drop-box{display:none}
   }
 
   async function startPlayback() {
-    if (playing) return;
+    if (playing || starting) return;
     const ids = state.assignments[state.group].slice();
     if (!ids.length) {
       toast('先拖一个乐器到左上角的小框里');
@@ -2008,11 +2023,35 @@ body.is-playing .dock .drop-box{display:none}
     if (!blocks.length) return;
     const totalW = blocks.reduce((s, b) => s + b.w, 0) || 1;
 
-    const ctx = AudioEngine.ensure();
-    try { await ctx.resume(); } catch (e) {}
+    starting = true;
+    updatePlayButton();
+    updateEnsButton();
 
-    const withAudio = ids.filter(id => assets[id].effects[state.group]);
-    const durations = withAudio.map(id => ensureDuration(effectKey(id, state.group), assetUrl(assets[id].effects[state.group]))).filter(n => n > 0);
+    let ctx, withAudio, durations;
+    try {
+      ctx = AudioEngine.ensure();
+      try { await ctx.resume(); } catch (e) {}
+
+      withAudio = ids.filter(id => assets[id].effects[state.group]);
+      /* 等音频时长探准再排时间；长度不准会让上一段拖进下一段，听起来就是两段重叠 */
+      durations = [];
+      for (const id of withAudio) {
+        const d = await measureDuration(effectKey(id, state.group), assetUrl(assets[id].effects[state.group]));
+        if (d > 0) durations.push(d);
+      }
+    } catch (e) {
+      return;
+    } finally {
+      starting = false;
+    }
+    updatePlayButton();
+    updateEnsButton();
+    if (!ctx || playing) return;
+
+    /* 先掐掉上一次残留的合成音，否则点“停止”后它们还会继续响，和新一次播放叠在一起 */
+    AudioEngine.silence();
+    stopPreviewAudio();
+
     let D;
     if (withAudio.length && durations.length) {
       D = Math.max.apply(null, durations);
@@ -2072,8 +2111,10 @@ body.is-playing .dock .drop-box{display:none}
     document.body.classList.add('is-playing');
     updatePlayButton();
 
+    const self = playing;
     const tick = () => {
-      if (!playing) return;
+      /* 上一轮播放的动画帧如果刚好还没执行完，不能让它继续驱动新一轮的播放 */
+      if (playing !== self) return;
       const elapsed = (performance.now() - playing.start) / 1000;
       const p = Math.min(elapsed / playing.D, 1);
 
@@ -2136,83 +2177,103 @@ body.is-playing .dock .drop-box{display:none}
   const ENSEMBLE_GAP = 0.3;
 
   async function startEnsemblePlayback() {
-    if (playing) return;
+    if (playing || starting) return;
     const missing = ensembleMissing();
     if (missing.length) {
       toast('还有 ' + missing.length + ' 组没选乐器，点下面的小方框选一个');
       return;
     }
 
-    const ctx = AudioEngine.ensure();
-    try { await ctx.resume(); } catch (e) {}
+    starting = true;
+    updatePlayButton();
+    updateEnsButton();
 
     const segs = [];
     const audios = [];
-    const timers = [];
+    const pending = [];
     const patterns = [];
     let cursor = 0;
+    let ctx = null;
 
-    GROUP_KEYS.forEach(g => {
-      const ids = state.assignments[g].slice();
-      if (!ids.length) return;
-      const blocks = BLOCKS
-        .filter(b => b.group === g)
-        .sort((a, b) => a.y - b.y || a.x - b.x);
-      if (!blocks.length) return;
-      const totalW = blocks.reduce((s, b) => s + b.w, 0) || 1;
+    try {
+      ctx = AudioEngine.ensure();
+      try { await ctx.resume(); } catch (e) {}
 
-      const withAudio = ids.filter(id => assets[id].effects[g]);
-      const durations = withAudio.map(id => ensureDuration(effectKey(id, g), assetUrl(assets[id].effects[g]))).filter(n => n > 0);
-      let D;
-      if (withAudio.length && durations.length) {
-        D = Math.max.apply(null, durations);
-        if (withAudio.length < ids.length) D = Math.max(D, 4.8 * totalW / 912);
-      } else {
-        D = 4.8 * totalW / 912;
-      }
-      D = Math.min(120, Math.max(2.2, D));
+      for (const g of GROUP_KEYS) {
+        const ids = state.assignments[g].slice();
+        if (!ids.length) continue;
+        const blocks = BLOCKS
+          .filter(b => b.group === g)
+          .sort((a, b) => a.y - b.y || a.x - b.x);
+        if (!blocks.length) continue;
+        const totalW = blocks.reduce((s, b) => s + b.w, 0) || 1;
 
-      const groupSegs = [];
-      let cum = 0;
-      blocks.forEach(b => {
-        const start = cursor + D * cum / totalW;
-        cum += b.w;
-        const end = cursor + D * cum / totalW;
-        groupSegs.push({ block: b, start, dur: Math.max(0.001, end - start), group: g, ids });
-      });
-      segs.push.apply(segs, groupSegs);
-
-      ids.forEach(id => {
-        const fx = assets[id].effects[g];
-        if (fx) {
-          const audio = new Audio(assetUrl(fx));
-          audio.volume = 0.95;
-          audio.preload = 'auto';
-          audios.push(audio);
-          const at = cursor;
-          timers.push(setTimeout(() => {
-            if (!playing || playing.mode !== 'ensemble') return;
-            audio.play().catch(() => {});
-          }, Math.max(0, at * 1000 + 40)));
-        } else {
-          const times = [];
-          groupSegs.forEach(s => {
-            blockNotes(s.block).forEach(x => {
-              const local = Math.max(0, Math.min(1, (x - s.block.x) / s.block.w));
-              times.push(s.start + local * s.dur);
-            });
-          });
-          patterns.push({ id, times });
+        const withAudio = ids.filter(id => assets[id].effects[g]);
+        /* 先把这一组音频的真实时长探准，D 算短了就会拖进下一组，听起来像两段重叠 */
+        const durations = [];
+        for (const id of withAudio) {
+          const d = await measureDuration(effectKey(id, g), assetUrl(assets[id].effects[g]));
+          if (d > 0) durations.push(d);
         }
-      });
+        let D;
+        if (withAudio.length && durations.length) {
+          D = Math.max.apply(null, durations);
+          if (withAudio.length < ids.length) D = Math.max(D, 4.8 * totalW / 912);
+        } else {
+          D = 4.8 * totalW / 912;
+        }
+        D = Math.min(120, Math.max(2.2, D));
 
-      cursor += D + ENSEMBLE_GAP;
-    });
+        const groupSegs = [];
+        let cum = 0;
+        blocks.forEach(b => {
+          const start = cursor + D * cum / totalW;
+          cum += b.w;
+          const end = cursor + D * cum / totalW;
+          groupSegs.push({ block: b, start, dur: Math.max(0.001, end - start), group: g, ids });
+        });
+        segs.push.apply(segs, groupSegs);
+
+        ids.forEach(id => {
+          const fx = assets[id].effects[g];
+          if (fx) {
+            const audio = new Audio(assetUrl(fx));
+            audio.volume = 0.95;
+            audio.preload = 'auto';
+            audios.push(audio);
+            /* 播放和停下的定时器统一在记录起点之后再排，避免准备耗时时序跑偏 */
+            pending.push({ audio, at: cursor, D });
+          } else {
+            const times = [];
+            groupSegs.forEach(s => {
+              blockNotes(s.block).forEach(x => {
+                const local = Math.max(0, Math.min(1, (x - s.block.x) / s.block.w));
+                times.push(s.start + local * s.dur);
+              });
+            });
+            patterns.push({ id, times });
+          }
+        });
+
+        cursor += D + ENSEMBLE_GAP;
+      }
+    } catch (e) {
+      return;
+    } finally {
+      starting = false;
+    }
+    updatePlayButton();
+    updateEnsButton();
+    if (!ctx || playing) return;
 
     if (!segs.length) {
       toast('还没有可以演奏的组别');
       return;
     }
+
+    /* 清掉上一次可能残留的合成音，避免和新一次演奏叠在一起 */
+    AudioEngine.silence();
+    stopPreviewAudio();
 
     const t0 = ctx.currentTime + 0.1;
     patterns.forEach(p => AudioEngine.playPattern(p.id, p.times, t0));
@@ -2225,12 +2286,23 @@ body.is-playing .dock .drop-box{display:none}
       mode: 'ensemble',
       start: performance.now(),
       audios,
-      timers,
+      timers: [],
       raf: 0,
       fired: new Set(),
       playheads: [],
       activeBand: -1
     };
+
+    /* 按组排队播放音效；这一组结束时强制停掉，音频再长也不会盖到下一组 */
+    pending.forEach(x => {
+      playing.timers.push(setTimeout(() => {
+        if (!playing || playing.mode !== 'ensemble') return;
+        x.audio.play().catch(() => {});
+      }, Math.max(0, x.at * 1000 + 40)));
+      playing.timers.push(setTimeout(() => {
+        try { x.audio.pause(); } catch (e) {}
+      }, Math.max(0, (x.at + x.D) * 1000 + 40)));
+    });
 
     $$('.playhead-group', els.fxLayer).forEach(n => n.remove());
     segs.forEach(s => {
@@ -2242,8 +2314,9 @@ body.is-playing .dock .drop-box{display:none}
     updatePlayButton();
     updateEnsButton();
 
+    const self = playing;
     const tick = () => {
-      if (!playing) return;
+      if (playing !== self) return;
       const elapsed = (performance.now() - playing.start) / 1000;
 
       let ai = playing.segs.findIndex(s => elapsed < s.start + s.dur);
@@ -2287,11 +2360,14 @@ body.is-playing .dock .drop-box{display:none}
     toast('五色合奏：绿 → 黄 → 红 → 蓝 → 灰');
   }
 
-  function finishPlayback() {
+  function finishPlayback(cut) {
     if (!playing) return;
     const p = playing;
     playing = null;
     cancelAnimationFrame(p.raf);
+
+    /* 手动停止时把已排进未来的合成音一并掐掉；自然放完则让它自己衰减完 */
+    if (cut) AudioEngine.silence();
 
     p.audios.forEach(a => {
       try { a.pause(); } catch (e) {}
@@ -2317,7 +2393,7 @@ body.is-playing .dock .drop-box{display:none}
   }
 
   function stopPlayback() {
-    finishPlayback();
+    finishPlayback(true);
   }
 
   /* ================= 弹窗 ================= */
@@ -2697,8 +2773,13 @@ body.is-playing .dock .drop-box{display:none}
 
     // 播放
     els.playBtn.addEventListener('click', () => {
-      if (playing) stopPlayback();
-      else startPlayback();
+      if (!playing) {
+        startPlayback();
+        return;
+      }
+      /* 刚按下 300ms 内的第二下当连点误触忽略，避免手机上一次连点把刚起的音乐又关掉 */
+      if (performance.now() - playing.start < 300) return;
+      stopPlayback();
     });
 
     // 五色合奏：点小框选乐器、× 移除、拖入乐器
@@ -2740,8 +2821,13 @@ body.is-playing .dock .drop-box{display:none}
       if (BY_ID[id]) assignEnsemble(slot.dataset.ens, id);
     });
     els.ensPlay.addEventListener('click', () => {
-      if (playing) stopPlayback();
-      else startEnsemblePlayback();
+      if (!playing) {
+        startEnsemblePlayback();
+        return;
+      }
+      /* 同播放按钮：连点时不要立刻把刚开始的合奏关掉 */
+      if (performance.now() - playing.start < 300) return;
+      stopPlayback();
     });
 
     // 弹窗
