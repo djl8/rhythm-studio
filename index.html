@@ -3664,7 +3664,8 @@ body.is-playing .dock .drop-box{display:none}
 
   /* 离线缓存：首次联网打开后，页面和全部素材都落到本地浏览器，
      之后（断网 / 弱网）打开同一个网址也能秒开。离线版单文件不走这里 */
-  if (!OFFLINE && 'serviceWorker' in navigator && location.protocol === 'https:') {
+  const _swLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  if (!OFFLINE && 'serviceWorker' in navigator && (location.protocol === 'https:' || _swLocal)) {
     window.addEventListener('load', () => {
       // updateViaCache:'none' —— 关键：sw.js 本身不能被 CDN 缓存 10 分钟，否则更新到不了设备
       navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' }).catch(() => {});
