@@ -844,6 +844,8 @@ body.is-playing .dock .drop-box{display:none}
   const GH_API = 'https://api.github.com';
   const GH_RAW = 'https://raw.githubusercontent.com';
   const GH_JSDELIVR = 'https://cdn.jsdelivr.net/gh';
+  const GH_JSDELIVR_GC = 'https://gcore.jsdelivr.net/gh';
+  const GH_PROXY = 'https://gh-proxy.com/https://raw.githubusercontent.com';
 
   /* 默认云端仓库 —— 打开网址即自动从这里拉取，零配置零 token */
   const DEFAULT_REPO = { user: 'djl8', repo: 'rhythm-studio', branch: 'main', path: 'assets' };
@@ -2801,6 +2803,9 @@ body.is-playing .dock .drop-box{display:none}
         if (base.indexOf('/assets/') < 0) list.push({ tag: 'pages', url: base + rest });
       }
       list.push({ tag: 'jsdelivr', url: GH_JSDELIVR + '/' + user + '/' + repo + '@' + branch + '/' + rest });
+      // 国内网络备用：gcore.jsdelivr / ghproxy，走不通时自动降级
+      list.push({ tag: 'gcore', url: GH_JSDELIVR_GC + '/' + user + '/' + repo + '@' + branch + '/' + rest });
+      list.push({ tag: 'ghproxy', url: GH_PROXY + '/' + user + '/' + repo + '/' + branch + '/' + rest });
       list.push({ tag: 'raw', url: GH_RAW + '/' + user + '/' + repo + '/' + branch + '/' + rest });
       return list;
     }
