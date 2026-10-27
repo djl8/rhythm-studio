@@ -850,6 +850,9 @@ body.is-playing .dock .drop-box{display:none}
   /* 默认云端仓库 —— 打开网址即自动从这里拉取，零配置零 token */
   const DEFAULT_REPO = { user: 'djl8', repo: 'rhythm-studio', branch: 'main', path: 'assets' };
 
+  /* 离线版标记：生成离线文件时会替换成 true，页面上所有素材随文件走，不连网络 */
+  const OFFLINE = false;
+
   /* ================= 数据 ================= */
   const GROUPS = {
     green:  { label: '绿色', swatch: '#a9c27b', stroke: '#88a95b', fill: '#dfeccb', soft: '#eef4e4' },
@@ -1077,13 +1080,36 @@ body.is-playing .dock .drop-box{display:none}
   }
 
   /* 懒加载 object URL：视频/音色只在用到时才创建，避免一打开就读几百 MB */
+  function dataUrlToBlob(u) {
+    try {
+      const i = u.indexOf(',');
+      if (i < 0) return null;
+      const mime = (u.slice(5, i).split(';')[0]) || 'application/octet-stream';
+      const bin = atob(u.slice(i + 1));
+      const n = bin.length;
+      const arr = new Uint8Array(n);
+      for (let k = 0; k < n; k++) arr[k] = bin.charCodeAt(k);
+      return new Blob([arr], { type: mime });
+    } catch (e) { return null; }
+  }
+
   function assetUrl(a) {
     if (!a) return null;
-    if (!a.url && a.blob) a.url = URL.createObjectURL(a.blob);
+    if (!a.url) {
+      if (a.blob) a.url = URL.createObjectURL(a.blob);
+      else if (a.b64) {
+        const b = dataUrlToBlob(a.b64);
+        if (b) { a.blob = b; a.url = URL.createObjectURL(b); }
+        else a.url = a.b64;
+      }
+    }
     return a.url;
   }
   function revokeAssetUrl(a) {
-    if (a && a.url) { URL.revokeObjectURL(a.url); a.url = null; }
+    if (a && a.url) {
+      if (a.url.indexOf('blob:') === 0) { try { URL.revokeObjectURL(a.url); } catch (e) {} }
+      a.url = null;
+    }
   }
 
   /* 时长懒探测：缓存里没有就后台探测，本次先用默认时长，下次播放就准确了 */
@@ -1107,25 +1133,65 @@ body.is-playing .dock .drop-box{display:none}
         const g = parts[2];
         if (!GROUP_KEYS.includes(g)) continue;
         const slot = assets[id].effects[g];
-        // 已加载且文件大小一致 → 跳过（避免重复读 IDB + 重复建 URL）
+        // 已加载且文件大小一致 → 跳过（内嵌素材与 IDB 缓存同源，无需重复读）
+        if (slot && slot.size === blob.size) continue;
         if (slot && slot.blob && slot.blob.size === blob.size) continue;
-        if (slot && slot.url) URL.revokeObjectURL(slot.url);
-        // 音效是播放必需，URL 直接建好；时长懒探测（播放时再算）
-        assets[id].effects[g] = { url: URL.createObjectURL(blob), blob, name };
+        revokeAssetUrl(slot);
+        assets[id].effects[g] = { url: URL.createObjectURL(blob), blob, name, size: blob.size };
         continue;
       }
       if (type !== 'icon' && type !== 'video' && type !== 'timbre') continue;
       const slot = assets[id][type];
+      if (slot && slot.size === blob.size) continue;
       if (slot && slot.blob && slot.blob.size === blob.size) continue;
-      if (slot && slot.url) URL.revokeObjectURL(slot.url);
+      revokeAssetUrl(slot);
       if (type === 'icon') {
         // 图标在卡片渲染时就要用，URL 直接建好
-        assets[id][type] = { url: URL.createObjectURL(blob), blob, name };
+        assets[id][type] = { url: URL.createObjectURL(blob), blob, name, size: blob.size };
       } else {
         // 视频/音色只在弹窗/试听时才用到，先只存 blob，URL 懒加载
-        assets[id][type] = { url: null, blob, name };
+        assets[id][type] = { url: null, blob, name, size: blob.size };
       }
     }
+  }
+
+  /* 离线版内嵌素材：每个文件一个 <script data-oa> 文本块，读 textContent 即可，
+     不需要 JSON.parse 一个 8MB 大字符串（启动几乎零开销）
+     图标用 dataURL 立即可用；音视频只留 base64，等播放/开弹窗时才转 blob */
+  function applyInlineAssets() {
+    const nodes = $$('script[data-oa]');
+    if (!nodes.length) return 0;
+
+    let n = 0;
+    for (const node of nodes) {
+      const key = node.dataset.oa;
+      const parts = String(key).split(':');
+      const id = parts[0];
+      const type = parts[1];
+      if (!BY_ID[id]) continue;
+      const d = node.textContent;
+      if (!d) continue;
+      const nm = node.dataset.name || '';
+      const sz = parseInt(node.dataset.size || '0', 10) || 0;
+
+      if (type === 'effect') {
+        const g = parts[2];
+        if (!GROUP_KEYS.includes(g)) continue;
+        if (assets[id].effects[g]) continue;
+        assets[id].effects[g] = { url: null, blob: null, b64: d, name: nm, size: sz };
+        n++;
+        continue;
+      }
+      if (type !== 'icon' && type !== 'video' && type !== 'timbre') continue;
+      if (assets[id][type]) continue;
+      if (type === 'icon') {
+        assets[id][type] = { url: d, blob: null, b64: d, name: nm, size: sz };
+      } else {
+        assets[id][type] = { url: null, blob: null, b64: d, name: nm, size: sz };
+      }
+      n++;
+    }
+    return n;
   }
 
   /* ================= 图形工具 ================= */
@@ -3502,10 +3568,25 @@ body.is-playing .dock .drop-box{display:none}
 
   async function init() {
     cacheEls();
+
+    // 离线版先把内嵌素材塞进内存，卡片/图谱一渲染就是自定义图标
+    if (OFFLINE) applyInlineAssets();
+
     buildScore();
     renderCards();
     renderDock();
     bindEvents();
+
+    if (OFFLINE) {
+      // 离线版：素材全在文件里，不碰任何网络，直接秒开
+      await loadSavedAssets();
+      renderAll();
+      if (els.syncChip) els.syncChip.hidden = true;
+      const cfgPanel = $('.gh-config');
+      if (cfgPanel) cfgPanel.hidden = true;
+      if (!storageOK) toast('当前环境无法本地保存，本次修改关闭页面后会丢失');
+      return;
+    }
 
     // 调试：暴露到 window 方便诊断
     window.__rhythmDebug = { steps: [] };
