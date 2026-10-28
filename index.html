@@ -135,7 +135,8 @@ body.is-playing .dock .drop-box{display:none}
 .cap-hint{margin-left:auto;font-size:11.5px;color:var(--muted-2);white-space:nowrap}
 
 /* ---------- 五色合奏 ---------- */
-.ensemble{grid-column:1;margin-top:14px;padding:14px 16px 16px;background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow-card)}
+.col-left{min-width:0;display:flex;flex-direction:column}
+.ensemble{margin-top:1cm;padding:14px 16px 16px;background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow-card)}
 .ens-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:11px}
 .ens-head h2{margin:0;font-size:14.5px;letter-spacing:.02em}
 .ens-head p{margin:3px 0 0;font-size:11px;line-height:1.5;color:var(--muted)}
@@ -639,6 +640,7 @@ body.is-playing .dock .drop-box{display:none}
 </div>
 
 <main class="layout">
+  <div class="col-left">
   <section class="stage-card" aria-label="节奏色块舞台">
     <div class="stage" id="stage">
       <svg class="score" id="score" viewBox="0 0 1526 922" role="img" aria-label="五条彩色节奏谱">
@@ -697,6 +699,7 @@ body.is-playing .dock .drop-box{display:none}
       <span id="ensPlayLabel">演奏</span>
     </button>
   </section>
+  </div>
 
   <aside class="sidebar" aria-label="乐器库">
     <section class="panel">
