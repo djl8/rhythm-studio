@@ -1931,7 +1931,42 @@ body.is-playing .dock .drop-box{display:none}
       }
     }
 
-    return { ensure, hit, playPattern, demo, silence };
+    const bufferCache = new Map();
+
+    /* 把音频文件解码成 AudioBuffer，用于精准时序播放；相同素材只解一次 */
+    function loadBuffer(url) {
+      if (!url) return Promise.reject(new Error('no url'));
+      if (bufferCache.has(url)) return Promise.resolve(bufferCache.get(url));
+      return fetch(url)
+        .then(r => r.arrayBuffer())
+        .then(arr => ctx.decodeAudioData(arr.slice(0)))
+        .then(buf => { bufferCache.set(url, buf); return buf; });
+    }
+
+    /* 计算“实际有声时长”：从末尾往前找最后一个超过阈值的采样，
+       再留一点点自然衰减尾巴，避免把文件末尾的静音算进演奏时长 */
+    function soundDuration(buf, tail) {
+      const ch = buf.getChannelData(0);
+      const sr = buf.sampleRate;
+      const thr = 0.004;
+      let i = ch.length - 1;
+      while (i > 0 && Math.abs(ch[i]) < thr) i--;
+      const t = i / sr;
+      return Math.min(buf.duration, t + (tail || 0.04));
+    }
+
+    /* 在精确时刻播放一段 buffer，返回 source 以便停止 */
+    function playBufferAt(buf, when, gain) {
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const g = ctx.createGain();
+      g.gain.value = gain == null ? 0.95 : gain;
+      src.connect(g); g.connect(master);
+      src.start(when);
+      return src;
+    }
+
+    return { ensure, hit, playPattern, demo, silence, loadBuffer, soundDuration, playBufferAt };
   })();
 
   function stopPreviewAudio() {
@@ -2181,8 +2216,9 @@ body.is-playing .dock .drop-box{display:none}
     toast('正在播放：' + ids.map(id => BY_ID[id].name).join('、'));
   }
 
-  /* 五色合奏：绿 → 黄 → 红 → 蓝 → 灰 依次演奏 */
-  const ENSEMBLE_GAP = 0.3;
+  /* 五色合奏：绿 → 黄 → 红 → 蓝 → 灰 依次演奏。
+     组间留一点点空隙（约 35ms），既不重叠又衔接紧密 */
+  const ENSEMBLE_GAP = 0.035;
 
   async function startEnsemblePlayback() {
     if (playing || starting) return;
@@ -2197,9 +2233,13 @@ body.is-playing .dock .drop-box{display:none}
     updateEnsButton();
 
     const segs = [];
-    const audios = [];
-    const pending = [];
+    const sources = [];
     const patterns = [];
+    /* 每一组需要播放的 buffer：{ buf, at, D } */
+    const toPlay = [];
+    /* 解码失败时退回 HTML Audio 的兜底队列 */
+    const fallbackAudios = [];
+    const fallbackEls = [];
     let cursor = 0;
     let ctx = null;
 
@@ -2217,12 +2257,24 @@ body.is-playing .dock .drop-box{display:none}
         const totalW = blocks.reduce((s, b) => s + b.w, 0) || 1;
 
         const withAudio = ids.filter(id => assets[id].effects[g]);
-        /* 先把这一组音频的真实时长探准，D 算短了就会拖进下一组，听起来像两段重叠 */
+        /* 把这一组的每条音效解码成 buffer，用“实际有声时长”算 D，
+           这样文件末尾的静音不会被算进演奏时长，组与组之间就能贴得很紧 */
+        const buffers = [];
         const durations = [];
         for (const id of withAudio) {
-          const d = await measureDuration(effectKey(id, g), assetUrl(assets[id].effects[g]));
-          if (d > 0) durations.push(d);
+          const url = assetUrl(assets[id].effects[g]);
+          try {
+            const buf = await AudioEngine.loadBuffer(url);
+            const sd = AudioEngine.soundDuration(buf, 0.045);
+            buffers.push({ buf, url, sd });
+            durations.push(sd);
+          } catch (e) {
+            /* 解码失败就退回用元数据时长，并在播放阶段走 HTML Audio 兜底 */
+            const d = await measureDuration(effectKey(id, g), url);
+            if (d > 0) { buffers.push({ buf: null, url, sd: d }); durations.push(d); }
+          }
         }
+
         let D;
         if (withAudio.length && durations.length) {
           D = Math.max.apply(null, durations);
@@ -2242,24 +2294,20 @@ body.is-playing .dock .drop-box{display:none}
         });
         segs.push.apply(segs, groupSegs);
 
+        buffers.forEach(({ buf, url }) => {
+          if (buf) toPlay.push({ buf, at: cursor, D });
+          else fallbackAudios.push({ url, at: cursor, D });
+        });
+
         ids.forEach(id => {
-          const fx = assets[id].effects[g];
-          if (fx) {
-            const audio = new Audio(assetUrl(fx));
-            audio.volume = 0.95;
-            audio.preload = 'auto';
-            audios.push(audio);
-            /* 播放和停下的定时器统一在记录起点之后再排，避免准备耗时时序跑偏 */
-            pending.push({ audio, at: cursor, D });
-          } else {
-            const times = [];
-            groupSegs.forEach(s => {
-              blockNotePoints(s.block).forEach(pt => {
-                times.push(s.start + pt.ratio * s.dur);
-              });
+          if (assets[id].effects[g]) return;
+          const times = [];
+          groupSegs.forEach(s => {
+            blockNotePoints(s.block).forEach(pt => {
+              times.push(s.start + pt.ratio * s.dur);
             });
-            patterns.push({ id, times });
-          }
+          });
+          patterns.push({ id, times });
         });
 
         cursor += D + ENSEMBLE_GAP;
@@ -2285,6 +2333,25 @@ body.is-playing .dock .drop-box{display:none}
     const t0 = ctx.currentTime + 0.1;
     patterns.forEach(p => AudioEngine.playPattern(p.id, p.times, t0));
 
+    /* 用 Web Audio 精准时刻播放每条音效，并在该组结束时精确停止，
+       既不会拖到下一组造成重叠，也不会因为 setTimeout 抖动而断开 */
+    toPlay.forEach(x => {
+      const src = AudioEngine.playBufferAt(x.buf, t0 + x.at, 0.95);
+      try { src.stop(t0 + x.at + x.D); } catch (e) {}
+      sources.push(src);
+    });
+
+    /* 解码失败的少数音频退回 HTML Audio，用相对时间排程兜底 */
+    const timers = [];
+    fallbackAudios.forEach(x => {
+      const a = new Audio(x.url);
+      a.volume = 0.95;
+      a.preload = 'auto';
+      fallbackEls.push(a);
+      timers.push(setTimeout(() => { a.play().catch(() => {}); }, Math.max(0, x.at * 1000 + 40)));
+      timers.push(setTimeout(() => { try { a.pause(); } catch (e) {} }, Math.max(0, (x.at + x.D) * 1000 + 40)));
+    });
+
     const total = segs[segs.length - 1].start + segs[segs.length - 1].dur;
     playing = {
       ids: [],
@@ -2292,23 +2359,13 @@ body.is-playing .dock .drop-box{display:none}
       D: total,
       mode: 'ensemble',
       start: performance.now(),
-      audios,
-      timers: [],
+      sources,
+      fallbackEls,
+      timers,
       raf: 0,
       fired: new Set(),
       activeBand: -1
     };
-
-    /* 按组排队播放音效；这一组结束时强制停掉，音频再长也不会盖到下一组 */
-    pending.forEach(x => {
-      playing.timers.push(setTimeout(() => {
-        if (!playing || playing.mode !== 'ensemble') return;
-        x.audio.play().catch(() => {});
-      }, Math.max(0, x.at * 1000 + 40)));
-      playing.timers.push(setTimeout(() => {
-        try { x.audio.pause(); } catch (e) {}
-      }, Math.max(0, (x.at + x.D) * 1000 + 40)));
-    });
 
     document.body.classList.add('is-playing');
     updatePlayButton();
@@ -2355,12 +2412,15 @@ body.is-playing .dock .drop-box{display:none}
     playing = null;
     cancelAnimationFrame(p.raf);
 
-    /* 手动停止时把已排进未来的合成音一并掐掉；自然放完则让它自己衰减完 */
-    if (cut) AudioEngine.silence();
-
-    p.audios.forEach(a => {
-      try { a.pause(); } catch (e) {}
-    });
+    /* 手动停止时把已排进未来的合成音和音效一并掐掉；
+       自然放完则让 buffer 自己按排定的 stop 时刻结束 */
+    if (cut) {
+      AudioEngine.silence();
+      (p.sources || []).forEach(s => { try { s.stop(); } catch (e) {} });
+      (p.fallbackEls || []).forEach(a => { try { a.pause(); } catch (e) {} });
+    } else {
+      (p.fallbackEls || []).forEach(a => { try { a.pause(); } catch (e) {} });
+    }
     (p.timers || []).forEach(t => clearTimeout(t));
 
     $$('.band.playing', els.bands).forEach(el => el.classList.remove('playing'));
