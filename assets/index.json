@@ -1,7 +1,7 @@
 {
   "version": 1,
   "frozen": false,
-  "exportedAt": 1793200614103,
+  "exportedAt": 1793201362244,
   "index": [
     {
       "path": "assets/bell/effect-blue.m4a",
@@ -49,6 +49,33 @@
       "size": 116482
     },
     {
+      "path": "assets/bell/icon.jpg",
+      "key": "bell:icon",
+      "id": "bell",
+      "spec": "icon",
+      "group": null,
+      "mimeType": "image/jpeg",
+      "size": 16059
+    },
+    {
+      "path": "assets/bell/timbre.m4a",
+      "key": "bell:timbre",
+      "id": "bell",
+      "spec": "timbre",
+      "group": null,
+      "mimeType": "audio/mp4",
+      "size": 46048
+    },
+    {
+      "path": "assets/bell/video.mp4",
+      "key": "bell:video",
+      "id": "bell",
+      "spec": "video",
+      "group": null,
+      "mimeType": "application/octet-stream",
+      "size": 169319
+    },
+    {
       "path": "assets/doublereed/effect-blue.m4a",
       "key": "doublereed:effect:blue",
       "id": "doublereed",
@@ -92,6 +119,33 @@
       "group": "yellow",
       "mimeType": "audio/x-m4a",
       "size": 130085
+    },
+    {
+      "path": "assets/doublereed/icon.jpg",
+      "key": "doublereed:icon",
+      "id": "doublereed",
+      "spec": "icon",
+      "group": null,
+      "mimeType": "image/jpeg",
+      "size": 44538
+    },
+    {
+      "path": "assets/doublereed/timbre.m4a",
+      "key": "doublereed:timbre",
+      "id": "doublereed",
+      "spec": "timbre",
+      "group": null,
+      "mimeType": "audio/mp4",
+      "size": 50591
+    },
+    {
+      "path": "assets/doublereed/video.mp4",
+      "key": "doublereed:video",
+      "id": "doublereed",
+      "spec": "video",
+      "group": null,
+      "mimeType": "application/octet-stream",
+      "size": 165430
     },
     {
       "path": "assets/drum/effect-blue.m4a",
@@ -139,6 +193,33 @@
       "size": 125721
     },
     {
+      "path": "assets/drum/icon.jpg",
+      "key": "drum:icon",
+      "id": "drum",
+      "spec": "icon",
+      "group": null,
+      "mimeType": "image/jpeg",
+      "size": 103934
+    },
+    {
+      "path": "assets/drum/timbre.m4a",
+      "key": "drum:timbre",
+      "id": "drum",
+      "spec": "timbre",
+      "group": null,
+      "mimeType": "audio/mp4",
+      "size": 42256
+    },
+    {
+      "path": "assets/drum/video.mp4",
+      "key": "drum:video",
+      "id": "drum",
+      "spec": "video",
+      "group": null,
+      "mimeType": "application/octet-stream",
+      "size": 184148
+    },
+    {
       "path": "assets/handbell/effect-blue.m4a",
       "key": "handbell:effect:blue",
       "id": "handbell",
@@ -182,6 +263,33 @@
       "group": "yellow",
       "mimeType": "audio/x-m4a",
       "size": 139384
+    },
+    {
+      "path": "assets/handbell/icon.jpg",
+      "key": "handbell:icon",
+      "id": "handbell",
+      "spec": "icon",
+      "group": null,
+      "mimeType": "image/jpeg",
+      "size": 41299
+    },
+    {
+      "path": "assets/handbell/timbre.m4a",
+      "key": "handbell:timbre",
+      "id": "handbell",
+      "spec": "timbre",
+      "group": null,
+      "mimeType": "audio/mp4",
+      "size": 52472
+    },
+    {
+      "path": "assets/handbell/video.mp4",
+      "key": "handbell:video",
+      "id": "handbell",
+      "spec": "video",
+      "group": null,
+      "mimeType": "application/octet-stream",
+      "size": 235595
     },
     {
       "path": "assets/shaker/effect-blue.m4a",
@@ -229,6 +337,33 @@
       "size": 137482
     },
     {
+      "path": "assets/shaker/icon.jpeg",
+      "key": "shaker:icon",
+      "id": "shaker",
+      "spec": "icon",
+      "group": null,
+      "mimeType": "image/jpeg",
+      "size": 14700
+    },
+    {
+      "path": "assets/shaker/timbre.m4a",
+      "key": "shaker:timbre",
+      "id": "shaker",
+      "spec": "timbre",
+      "group": null,
+      "mimeType": "audio/mp4",
+      "size": 83834
+    },
+    {
+      "path": "assets/shaker/video.mp4",
+      "key": "shaker:video",
+      "id": "shaker",
+      "spec": "video",
+      "group": null,
+      "mimeType": "application/octet-stream",
+      "size": 158457
+    },
+    {
       "path": "assets/tambourine/effect-blue.m4a",
       "key": "tambourine:effect:blue",
       "id": "tambourine",
@@ -272,6 +407,33 @@
       "group": "yellow",
       "mimeType": "audio/x-m4a",
       "size": 133785
+    },
+    {
+      "path": "assets/tambourine/icon.jpg",
+      "key": "tambourine:icon",
+      "id": "tambourine",
+      "spec": "icon",
+      "group": null,
+      "mimeType": "image/jpeg",
+      "size": 58590
+    },
+    {
+      "path": "assets/tambourine/timbre.m4a",
+      "key": "tambourine:timbre",
+      "id": "tambourine",
+      "spec": "timbre",
+      "group": null,
+      "mimeType": "audio/mp4",
+      "size": 59708
+    },
+    {
+      "path": "assets/tambourine/video.mp4",
+      "key": "tambourine:video",
+      "id": "tambourine",
+      "spec": "video",
+      "group": null,
+      "mimeType": "application/octet-stream",
+      "size": 287058
     },
     {
       "path": "assets/triangle/effect-blue.m4a",
@@ -319,6 +481,33 @@
       "size": 126265
     },
     {
+      "path": "assets/triangle/icon.jpg",
+      "key": "triangle:icon",
+      "id": "triangle",
+      "spec": "icon",
+      "group": null,
+      "mimeType": "image/jpeg",
+      "size": 52024
+    },
+    {
+      "path": "assets/triangle/timbre.m4a",
+      "key": "triangle:timbre",
+      "id": "triangle",
+      "spec": "timbre",
+      "group": null,
+      "mimeType": "audio/mp4",
+      "size": 69636
+    },
+    {
+      "path": "assets/triangle/video.mp4",
+      "key": "triangle:video",
+      "id": "triangle",
+      "spec": "video",
+      "group": null,
+      "mimeType": "application/octet-stream",
+      "size": 164092
+    },
+    {
       "path": "assets/tube/effect-blue.m4a",
       "key": "tube:effect:blue",
       "id": "tube",
@@ -362,6 +551,33 @@
       "group": "yellow",
       "mimeType": "audio/x-m4a",
       "size": 127741
+    },
+    {
+      "path": "assets/tube/icon.jpg",
+      "key": "tube:icon",
+      "id": "tube",
+      "spec": "icon",
+      "group": null,
+      "mimeType": "image/jpeg",
+      "size": 21467
+    },
+    {
+      "path": "assets/tube/timbre.m4a",
+      "key": "tube:timbre",
+      "id": "tube",
+      "spec": "timbre",
+      "group": null,
+      "mimeType": "audio/mp4",
+      "size": 41729
+    },
+    {
+      "path": "assets/tube/video.mp4",
+      "key": "tube:video",
+      "id": "tube",
+      "spec": "video",
+      "group": null,
+      "mimeType": "application/octet-stream",
+      "size": 370569
     }
   ]
 }
