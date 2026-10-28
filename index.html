@@ -627,6 +627,10 @@ body.is-playing .dock .drop-box{display:none}
   </div>
   <div class="top-actions">
     <button class="sync-chip" id="syncChip" type="button" hidden></button>
+    <button class="screen-btn" id="syncBtn" type="button" title="把自定义素材同步到云端">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.2-4.5L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.2 4.5L20 16"/><path d="M20 20v-4h-4"/></svg>
+      <span>云端同步</span>
+    </button>
     <div class="top-note"><i></i>点击乐器卡片 · 拖拽到左上小框</div>
     <button class="screen-btn" id="screenBtn" type="button" title="全屏并切换为横屏">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M7.5 10h.01M16.5 14h.01"/></svg>
@@ -982,6 +986,7 @@ body.is-playing .dock .drop-box{display:none}
   /* 正在准备播放（音频时长探测要等，异步期间防止重复点按钮叠出两条播放） */
   let starting = false;
   let pendingUpload = null;
+  let autoSyncTimer = null;
   let previewAudio = null;
   let demoTimer = 0;
   let lastFocus = null;
@@ -2515,6 +2520,15 @@ body.is-playing .dock .drop-box{display:none}
     renderAll();
     if (type === 'video' && currentId === id) renderModalMedia();
     toast(specLabel(type, group) + '已更新');
+
+    /* 有云端配置时自动推一次，连续上传会合并成一次 */
+    if (gh.hasConfig()) {
+      clearTimeout(autoSyncTimer);
+      autoSyncTimer = setTimeout(async () => {
+        const ok = await gh.autoSync();
+        if (ok) toast('已自动同步到云端');
+      }, 1800);
+    }
   }
 
   async function resetAsset(id, spec, silent) {
@@ -3477,6 +3491,28 @@ body.is-playing .dock .drop-box{display:none}
         }
       });
 
+      /* 顶栏常驻入口：不用再往下滑去找面板 */
+      const syncBtn = $('#syncBtn');
+      if (syncBtn) syncBtn.addEventListener('click', async () => {
+        if (!config || !config.token) {
+          const panel = $('.gh-config');
+          if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          toast('先在右侧「跨设备存档」里填好用户名、仓库和 Token，再点这里', 9000);
+          return;
+        }
+        syncBtn.disabled = true;
+        try {
+          await doSync();
+          toast('已同步到云端，其他设备打开即可看到');
+        } catch (e) {
+          const full = (e.message || String(e));
+          updateStatus('error', full);
+          toast('同步失败：' + full.slice(0, 120), 6000);
+        } finally {
+          syncBtn.disabled = false;
+        }
+      });
+
       if (els.syncChip) els.syncChip.addEventListener('click', async () => {
         if (!els.syncChip.classList.contains('warn')) return;
         if (lastPull && lastPull.error) {
@@ -3528,7 +3564,19 @@ body.is-playing .dock .drop-box{display:none}
       });
     }
 
-    return { bootstrap, bind, isFrozen: () => state.frozen, renderConfig, saveConfig, retryNow: pullWithRetry };
+    return {
+      bootstrap, bind,
+      isFrozen: () => state.frozen,
+      renderConfig, saveConfig,
+      initPanel: () => { loadConfig(); renderConfig(); },
+      retryNow: pullWithRetry,
+      hasConfig: () => !!(config && config.token),
+      /* 上传完顺手推一次，免得改完忘了点同步、别的设备还是旧声音 */
+      autoSync: async () => {
+        if (!config || !config.token) return false;
+        try { await doSync(); return true; } catch (e) { return false; }
+      }
+    };
   })();
 
   /* ================= 初始化 ================= */
@@ -3608,13 +3656,12 @@ body.is-playing .dock .drop-box{display:none}
     bindEvents();
 
     if (OFFLINE) {
-      // 离线版：素材全在文件里，不碰任何网络，直接秒开
+      // 离线版：素材全在文件里，启动不发起任何网络请求，直接秒开
       await purgeStaleEffects();
       await loadSavedAssets();
       renderAll();
-      if (els.syncChip) els.syncChip.hidden = true;
-      const cfgPanel = $('.gh-config');
-      if (cfgPanel) cfgPanel.hidden = true;
+      /* 但存档面板要保留：录好的素材还得能推到云端给别的设备用 */
+      gh.initPanel();
       if (!storageOK) toast('当前环境无法本地保存，本次修改关闭页面后会丢失');
       return;
     }
