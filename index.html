@@ -2995,6 +2995,19 @@ body.is-playing .dock .drop-box{display:none}
     async function collectLocalAssets() {
       const rows = await idbLoadAll();
       const out = [];
+      const seen = new Set();
+      const add = (key, id, spec, group, blob, name, mime) => {
+        if (seen.has(key)) return;
+        const ext = guessExt(name, mime || 'application/octet-stream', spec);
+        const fname = spec === 'effect' ? ('effect-' + group + ext) : (spec + ext);
+        out.push({
+          key, id, spec, group,
+          blob, name: name || '',
+          mimeType: mime || 'application/octet-stream',
+          path: config.path + '/' + id + '/' + fname
+        });
+        seen.add(key);
+      };
       for (const row of rows) {
         const parts = String(row.key).split(':');
         const id = parts[0];
@@ -3005,17 +3018,34 @@ body.is-playing .dock .drop-box{display:none}
         else if (type === 'icon' || type === 'video' || type === 'timbre') { spec = type; group = null; }
         else continue;
         // 路径：assets/{id}/icon.svg 或 assets/{id}/video.mp4 或 assets/{id}/timbre.mp3 或 assets/{id}/effect-green.mp3
-        const ext = guessExt(row.val.name, row.val.blob.type || row.val.mimeType || 'application/octet-stream', spec);
-        const fname = spec === 'effect' ? ('effect-' + group + ext) : (spec + ext);
-        out.push({
-          key: row.key,                     // 'shaker:icon' / 'drum:effect:red'
-          id, spec, group,
-          blob: row.val.blob,
-          name: row.val.name || '',
-          mimeType: row.val.blob.type || row.val.mimeType || 'application/octet-stream',
-          path: config.path + '/' + id + '/' + fname
-        });
+        add(row.key, id, spec, group, row.val.blob, row.val.name,
+            row.val.blob.type || row.val.mimeType || '');
       }
+
+      /* 离线版的内嵌素材只在内存里（b64），IndexedDB 里没有。
+         不同步带上它们，云端会把 assets/ 下这些文件当成已删除，整片覆盖掉 */
+      INSTRUMENTS.forEach(ins => {
+        const a = assets[ins.id];
+        if (!a) return;
+        ['icon', 'video', 'timbre'].forEach(t => {
+          const slot = a[t];
+          if (!slot) return;
+          const key = ins.id + ':' + t;
+          if (seen.has(key)) return;
+          const blob = slot.blob || (slot.b64 ? dataUrlToBlob(slot.b64) : null);
+          if (!blob) return;
+          add(key, ins.id, t, null, blob, slot.name, blob.type);
+        });
+        GROUP_KEYS.forEach(g => {
+          const slot = a.effects[g];
+          if (!slot) return;
+          const key = effectKey(ins.id, g);
+          if (seen.has(key)) return;
+          const blob = slot.blob || (slot.b64 ? dataUrlToBlob(slot.b64) : null);
+          if (!blob) return;
+          add(key, ins.id, 'effect', g, blob, slot.name, blob.type);
+        });
+      });
       return out;
     }
     function guessExt(name, mime, spec) {
