@@ -2052,24 +2052,27 @@ body.is-playing .dock .drop-box{display:none}
     updatePlayButton();
     updateEnsButton();
 
-    let ctx, withAudio, buffers, durations;
+    let ctx, withAudio, effects, durations;
     try {
       ctx = AudioEngine.ensure();
       try { await ctx.resume(); } catch (e) {}
 
       withAudio = ids.filter(id => assets[id].effects[state.group]);
-      /* 解码成 buffer 并用实际有声时长排时间，同时走响度归一化 */
-      buffers = [];
+      /* 解码成 buffer 并用实际有声时长排时间，同时走响度归一化。
+         解码失败（部分浏览器不支持该编码）时保留 url，播放阶段退回 <audio>，
+         否则这一组会整组没声音 */
+      effects = [];
       durations = [];
       for (const id of withAudio) {
         const url = assetUrl(assets[id].effects[state.group]);
         try {
           const buf = await AudioEngine.loadBuffer(url);
-          buffers.push(buf);
-          durations.push(AudioEngine.soundDuration(buf, 0.045));
+          const sd = AudioEngine.soundDuration(buf, 0.045);
+          effects.push({ buf, url, sd });
+          durations.push(sd);
         } catch (e) {
           const d = await measureDuration(effectKey(id, state.group), url);
-          if (d > 0) durations.push(d);
+          if (d > 0) { effects.push({ buf: null, url, sd: d }); durations.push(d); }
         }
       }
     } catch (e) {
@@ -2107,11 +2110,24 @@ body.is-playing .dock .drop-box{display:none}
     });
 
     const sources = [];
+    const fallbackEls = [];
+    const timers = [];
     const t0 = ctx.currentTime + 0.1;
-    buffers.forEach(buf => {
-      const src = AudioEngine.playBufferAt(buf, t0, 0.95);
-      try { src.stop(t0 + D); } catch (e) {}
-      sources.push(src);
+    effects.forEach(x => {
+      if (x.buf) {
+        /* buffer 路径：采样级精准开始 + 到点精确停止，且带响度归一化 */
+        const src = AudioEngine.playBufferAt(x.buf, t0, 0.95);
+        try { src.stop(t0 + x.sd); } catch (e) {}
+        sources.push(src);
+      } else {
+        /* 解码失败：用 <audio> 兜底，保证这一组照样能听到声音 */
+        const a = new Audio(x.url);
+        a.volume = 0.95;
+        a.preload = 'auto';
+        fallbackEls.push(a);
+        timers.push(setTimeout(() => { a.play().catch(() => {}); }, 40));
+        timers.push(setTimeout(() => { try { a.pause(); } catch (e) {} }, Math.max(0, x.sd * 1000 + 40)));
+      }
     });
 
     ids.forEach(id => {
@@ -2129,6 +2145,8 @@ body.is-playing .dock .drop-box{display:none}
       ids, segs, D,
       start: performance.now(),
       sources,
+      fallbackEls,
+      timers,
       raf: 0,
       fired: new Set(),
       activeBand: -1

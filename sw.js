@@ -3,7 +3,7 @@
    视频 / 音色 / 音效在真正播放或打开时自动落到缓存，用过一次之后断网也能用。
 
    版本号每次上线务必递增，浏览器会因为看到 sw.js hash 变化而触发新 SW 安装 */
-const CACHE = 'rhythm-studio-v20261028j';
+const CACHE = 'rhythm-studio-v20261028k';
 const CORE = [
   "./index.html",
   "./offline.html",
