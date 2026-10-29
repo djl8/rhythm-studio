@@ -1932,6 +1932,7 @@ body.is-playing .dock .drop-box{display:none}
     }
 
     const bufferCache = new Map();
+    const normGainCache = new Map();
 
     /* 把音频文件解码成 AudioBuffer，用于精准时序播放；相同素材只解一次 */
     function loadBuffer(url) {
@@ -1955,12 +1956,41 @@ body.is-playing .dock .drop-box{display:none}
       return Math.min(buf.duration, t + (tail || 0.04));
     }
 
-    /* 在精确时刻播放一段 buffer，返回 source 以便停止 */
+    /* 响度归一化：算 buffer 的 RMS（平均响度）和峰值，
+       算出一个增益让所有乐器听起来差不多响，同时不削波。
+       targetRMS 取 0.18 左右，peak 限制在 0.95 以内给压缩器留余量 */
+    function normalizeGain(buf) {
+      if (normGainCache.has(buf)) return normGainCache.get(buf);
+      const ch = buf.getChannelData(0);
+      const target = 0.18;
+      let sum = 0, peak = 0, n = 0;
+      const step = Math.max(1, Math.floor(ch.length / 200000));
+      for (let i = 0; i < ch.length; i += step) {
+        const v = ch[i];
+        const a = v < 0 ? -v : v;
+        if (a > peak) peak = a;
+        sum += v * v;
+        n++;
+      }
+      const rms = n > 0 ? Math.sqrt(sum / n) : 0;
+      let g = 1;
+      if (rms > 0.001 && peak > 0.001) {
+        g = target / rms;
+        if (peak * g > 0.95) g = 0.95 / peak;   // 防止削波
+        g = Math.max(0.3, Math.min(2.2, g));      // 限制范围，避免极端放大或压死
+      }
+      normGainCache.set(buf, g);
+      return g;
+    }
+
+    /* 在精确时刻播放一段 buffer，返回 source 以便停止。
+       gain 是用户侧的基础音量，再乘上响度归一化系数 */
     function playBufferAt(buf, when, gain) {
       const src = ctx.createBufferSource();
       src.buffer = buf;
       const g = ctx.createGain();
-      g.gain.value = gain == null ? 0.95 : gain;
+      const base = gain == null ? 0.95 : gain;
+      g.gain.value = base * normalizeGain(buf);
       src.connect(g); g.connect(master);
       src.start(when);
       return src;
@@ -2086,17 +2116,25 @@ body.is-playing .dock .drop-box{display:none}
     updatePlayButton();
     updateEnsButton();
 
-    let ctx, withAudio, durations;
+    let ctx, withAudio, buffers, durations;
     try {
       ctx = AudioEngine.ensure();
       try { await ctx.resume(); } catch (e) {}
 
       withAudio = ids.filter(id => assets[id].effects[state.group]);
-      /* 等音频时长探准再排时间；长度不准会让上一段拖进下一段，听起来就是两段重叠 */
+      /* 解码成 buffer 并用实际有声时长排时间，同时走响度归一化 */
+      buffers = [];
       durations = [];
       for (const id of withAudio) {
-        const d = await measureDuration(effectKey(id, state.group), assetUrl(assets[id].effects[state.group]));
-        if (d > 0) durations.push(d);
+        const url = assetUrl(assets[id].effects[state.group]);
+        try {
+          const buf = await AudioEngine.loadBuffer(url);
+          buffers.push(buf);
+          durations.push(AudioEngine.soundDuration(buf, 0.045));
+        } catch (e) {
+          const d = await measureDuration(effectKey(id, state.group), url);
+          if (d > 0) durations.push(d);
+        }
       }
     } catch (e) {
       return;
@@ -2132,16 +2170,14 @@ body.is-playing .dock .drop-box{display:none}
       return { block: b, start, dur: Math.max(0.001, end - start), group: state.group, ids };
     });
 
-    const audios = [];
-    withAudio.forEach(id => {
-      const audio = new Audio(assetUrl(assets[id].effects[state.group]));
-      audio.volume = 0.95;
-      audio.preload = 'auto';
-      audio.play().catch(() => {});
-      audios.push(audio);
+    const sources = [];
+    const t0 = ctx.currentTime + 0.1;
+    buffers.forEach(buf => {
+      const src = AudioEngine.playBufferAt(buf, t0, 0.95);
+      try { src.stop(t0 + D); } catch (e) {}
+      sources.push(src);
     });
 
-    const t0 = ctx.currentTime + 0.1;
     ids.forEach(id => {
       if (assets[id].effects[state.group]) return;
       const times = [];
@@ -2156,7 +2192,7 @@ body.is-playing .dock .drop-box{display:none}
     playing = {
       ids, segs, D,
       start: performance.now(),
-      audios,
+      sources,
       raf: 0,
       fired: new Set(),
       activeBand: -1

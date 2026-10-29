@@ -1,7 +1,7 @@
 /* 节奏工坊离线缓存
    安装阶段只预缓存页面本体和图标这类小文件（约 200KB），弱网也能几秒装完、SW 立刻生效；
    视频 / 音色 / 音效在真正播放或打开时自动落到缓存里，用过一次之后断网也能用。 */
-const CACHE = 'rhythm-studio-v20261028h';
+const CACHE = 'rhythm-studio-v20261028i';
 const CORE = [
   "./index.html",
   "./manifest.webmanifest",
